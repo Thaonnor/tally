@@ -108,3 +108,60 @@ pub async fn create_transfers_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Err
 
     Ok(())
 }
+
+pub async fn insert_account(
+    pool: &Pool<Sqlite>,
+    name: &str,
+    account_type: &str,
+) -> Result<i64, sqlx::Error> {
+    let result = sqlx::query("INSERT INTO accounts (name, type) VALUES (?, ?)")
+        .bind(name)
+        .bind(account_type)
+        .execute(pool)
+        .await?;
+
+    Ok(result.last_insert_rowid())
+}
+
+pub async fn get_all_accounts(
+    pool: &Pool<Sqlite>,
+) -> Result<Vec<(i64, String, String)>, sqlx::Error> {
+    let accounts = sqlx::query_as::<_, (i64, String, String)>(
+        "SELECT id, name, type FROM accounts WHERE archived = FALSE ORDER BY display_order, name",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(accounts)
+}
+
+pub async fn get_account_by_id(
+    pool: &Pool<Sqlite>,
+    id: i64,
+) -> Result<Option<(i64, String, String)>, sqlx::Error> {
+    let account = sqlx::query_as::<_, (i64, String, String)>(
+        "SELECT id, name, type FROM accounts WHERE id = ? AND archived = FALSE",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(account)
+}
+
+pub async fn update_account_balance(
+    pool: &Pool<Sqlite>,
+    id: i64,
+    new_balance: f64,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        "UPDATE accounts SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND archived = FALSE"
+    )
+    .bind(new_balance)
+    .bind(id)
+    .execute(pool)
+    .await?;
+
+    // Returns true if the row was successfully updated
+    Ok(result.rows_affected() > 0)
+}
