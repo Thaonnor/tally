@@ -13,22 +13,52 @@
         </nav>
 
         <div class="accounts-section">
-            <h3>Accounts</h3>
+            <div class="accounts-header">
+                <h3>Accounts</h3>
+                <button @click="showAddModal = true" class="add-btn">+</button>
+            </div>
             <ul class="account-list">
                 <AccountItem name="Chase Checking" :balance="1250.75" />
-                <AccountItem name="Savings Account" :balance="5000.00" />
-                <AccountItem name="Credit Card" :balance="Number(-340.20)" />
+                <AccountItem name="Savings Account" :balance="5000.0" />
+                <AccountItem name="Credit Card" :balance="Number(-340.2)" />
             </ul>
         </div>
     </div>
+
+    <Modal
+        :isOpen="showAddModal"
+        title="Add Account"
+        @close="showAddModal = false"
+    >
+        <AccountForm
+            mode="create"
+            @submit="handleAddAccount"
+            @cancel="showAddModal = false"
+        />
+    </Modal>
 </template>
 
 <script>
     import AccountItem from './AccountItem.vue';
+    import Modal from './Modal.vue';
+    import AccountForm from './AccountForm.vue';
     export default {
         name: 'Sidebar',
         components: {
             AccountItem,
+            Modal,
+            AccountForm,
+        },
+        data() {
+            return {
+                showAddModal: false,
+            };
+        },
+        methods: {
+            handleAddAccount(accountData) {
+                console.log('New account:', accountData);
+                this.showAddModal = false;
+            },
         },
     };
 </script>
@@ -89,6 +119,23 @@
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.05em;
+    }
+
+    .accounts-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 20px 12px;
+    }
+
+    .add-btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
     }
 
     .account-list {
