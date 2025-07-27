@@ -1,37 +1,6 @@
 <template>
     <div class="app-container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="app-title">
-                <h2>Tally</h2>
-            </div>
-
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="#" class="nav-link active">Dashboard</a></li>
-                    <li><a href="#" class="nav-link">Reports</a></li>
-                    <li><a href="#" class="nav-link">Settings</a></li>
-                </ul>
-            </nav>
-
-            <div class="accounts-section">
-                <h3>Accounts</h3>
-                <ul class="account-list">
-                    <li class="account-item">
-                        <span class="account-name">Chase Checking</span>
-                        <span class="account-balance">$1,250.75</span>
-                    </li>
-                    <li class="account-item">
-                        <span class="account-name">Savings</span>
-                        <span class="account-balance">$5,000.00</span>
-                    </li>
-                    <li class="account-item">
-                        <span class="account-name">Credit Card</span>
-                        <span class="account-balance negative">-$340.20</span>
-                    </li>
-                </ul>
-            </div>
-        </div>
+        <Sidebar />
 
         <!-- Main Content -->
         <div class="main-content">
@@ -42,8 +11,12 @@
 </template>
 
 <script>
+    import Sidebar from './components/Sidebar.vue';
     export default {
         name: 'App',
+        components: {
+            Sidebar,
+        },
     };
 </script>
 
@@ -70,7 +43,7 @@
         /* Text colors */
         --text-primary: #f9fafb;
         --text-secondary: #d1d5db;
-        -text-muted: #9ca3af;
+        --text-muted: #9ca3af;
 
         /* Brand colors */
         --primary: #6366f1;
@@ -122,106 +95,6 @@
     .app-container {
         display: flex;
         height: 100vh;
-    }
-
-    .sidebar {
-        width: 280px;
-        background-color: var(--bg-secondary);
-        color: #f9fafb;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .app-title {
-        padding: 24px 20px 16px;
-        border-bottom: 1px solid var(--bg-tertiary);
-    }
-
-    .app-title h2 {
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--primary);
-    }
-
-    .main-nav {
-        padding: 16px 0;
-        border-bottom: 1px solid var(--bg-tertiary);
-    }
-
-    .main-nav ul {
-        list-style: none;
-    }
-
-    .nav-link {
-        display: block;
-        padding: 12px 20px;
-        color: var(--text-secondary);
-        text-decoration: none;
-        transition: background-color 0.2s;
-    }
-
-    .nav-link:hover,
-    .nav-link.active {
-        background-color: var(--bg-tertiary);
-        color: var(--text-primary);
-    }
-
-    .accounts-section {
-        flex: 1;
-        padding: 16px 0;
-    }
-
-    .accounts-section h3 {
-        padding: 0 20px 12px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .account-list {
-        list-style: none;
-    }
-
-    .account-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 20px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-
-    .account-item:hover {
-        background-color: var(--bg-tertiary);
-    }
-
-    .account-name {
-        font-weight: 500;
-    }
-
-    .account-balance {
-        font-weight: 600;
-        color: var(--success);
-    }
-
-    .account-balance.negative {
-        color: var(--danger);
-    }
-
-    /* Responsive adjustments */
-    @media (min-width: 1920px) {
-        .sidebar {
-            width: 320px;
-        }
-    }
-
-    @media (max-width: 1366px) {
-        .sidebar {
-            width: 240px;
-        }
     }
 
     .main-content {
