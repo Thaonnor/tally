@@ -1,9 +1,9 @@
 <template>
-    <div class="app-container">
+    <div class="flex h-screen">
         <Sidebar />
 
         <!-- Main Content -->
-        <div class="main-content bg-red-500">
+        <div class="flex-1 text-gray-50 p-5">
             <h1>Welcome to Tally!</h1>
             <p>Main content area goes here</p>
         </div>
