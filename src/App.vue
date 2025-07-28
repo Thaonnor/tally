@@ -3,7 +3,7 @@
         <Sidebar />
 
         <!-- Main Content -->
-        <div class="main-content">
+        <div class="main-content bg-red-500">
             <h1>Welcome to Tally!</h1>
             <p>Main content area goes here</p>
         </div>
@@ -99,7 +99,7 @@
 
     .main-content {
         flex: 1;
-        background-color: var(--bg-primary);
+        /* background-color: var(--bg-primary); */
         color: var(--text-primary);
         padding: 20px;
     }
