@@ -1,20 +1,20 @@
 <template>
-    <form @submit.prevent="handleSubmit" class="account-form">
-        <div class="form-group">
-            <label for="name">Account Name *</label>
+    <form @submit.prevent="handleSubmit" class="max-w-sm">
+        <div class="mb-5">
+            <label for="name" class="block mb-2 font-medium text-gray-50">Account Name *</label>
             <input
                 id="name"
                 v-model="form.name"
                 type="text"
                 required
                 placeholder="e.g., Chase Checking"
-                class="form-input"
+                class="w-full p-3 border-gray-600 rounded bg-gray-900 text-gray-50 text-base focus:outline-none focus:border-indigo-500"
             />
         </div>
 
-        <div class="form-group">
-            <label for="type">Account Type *</label>
-            <select id="type" v-model="form.type" required class="form-input">
+        <div class="mb-5">
+            <label for="type" class="block mb-2 font-medium text-gray-50">Account Type *</label>
+            <select id="type" v-model="form.type" required class="w-full p-3 pr-10 border border-gray-600 rounded bg-gray-900 text-gray-50 text-base focus:outline-none focus:border-indigo-500 appearance-none">
                 <option value="">Select account type</option>
                 <option value="checking">Checking</option>
                 <option value="savings">Savings</option>
@@ -24,38 +24,38 @@
             </select>
         </div>
 
-        <div class="form-group">
-            <label for="institution">Institution</label>
+        <div class="mb-5">
+            <label for="institution" class="block mb-2 font-medium text-gray-50">Institution</label>
             <input
                 id="institution"
                 v-model="form.institution"
                 type="text"
                 placeholder="e.g., Bank of America"
-                class="form-input"
+                class="w-full p-3 border border-gray-600 rounded bg-gray-900 text-gray-50 text-base focus:outline-none focus:border-indigo-500"
             />
         </div>
 
-        <div class="form-group">
-            <label for="balance">Starting Balance</label>
+        <div class="mb-5">
+            <label for="balance" class="block mb-2 font-medium text-gray-50">Starting Balance</label>
             <input
                 id="balance"
                 v-model.number="form.currentBalance"
                 type="number"
                 step="0.01"
                 placeholder="0.00"
-                class="form-input"
+                class="w-full p-3 border border-gray-600 rounded bg-gray-900 text-gray-50 text-base focus:outline-none focus:border-indigo-500 appearance-none"
             />
         </div>
 
-        <div class="form-actions">
+        <div class="flex gap-3 justify-end mt-6">
             <button
                 type="button"
                 @click="$emit('cancel')"
-                class="btn btn-secondary"
+                class="px-6 py-3 border-none rounded font-medium cursor-pointer transition-colors bg-gray-600 text-gray-50 hover:bg-gray-500"
             >
                 Cancel
             </button>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="px-6 py-3 border-none rounded font-medium cursor-pointer transition-colors bg-indigo-500 text-white hover:bg-indigo-600">
                 {{ mode === 'edit' ? 'Update Account' : 'Add Account' }}
             </button>
         </div>

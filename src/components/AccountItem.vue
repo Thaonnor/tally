@@ -1,7 +1,7 @@
 <template>
-    <li class="account-item" @click="handleClick">
-        <span class="account-name">{{ name }}</span>
-        <span class="account-balance" :class="{ negative: balance < 0 }">
+    <li class="flex justify-between items-center px-5 py-3 cursor-pointer transition-colors hover:bg-gray-600" @click="handleClick">
+        <span class="font-medium">{{ name }}</span>
+        <span class="font-semibold text-emerald-500" :class="{ 'text-red-500': balance < 0 }">
             {{ formatBalance(balance) }}
         </span>
     </li>
@@ -29,36 +29,7 @@
             },
             handleClick() {
                 // Will emit events or handle navigation later
-                console.log(`Clicked on account: ${this.name}`);
             },
         },
     };
 </script>
-
-<style scoped>
-    .account-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 20px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-
-    .account-item:hover {
-        background-color: var(--bg-tertiary);
-    }
-
-    .account-name {
-        font-weight: 500;
-    }
-
-    .account-balance {
-        font-weight: 600;
-        color: var(--success);
-    }
-
-    .negative {
-        color: var(--danger) !important;
-    }
-</style>

@@ -55,19 +55,6 @@
         --danger: #ef4444;
     }
 
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    body,
-    html {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-    }
-
     body {
         font-family: var(--font-family);
         font-feature-settings: 'tnum' 1; /* Enables tabular numbers for financial data */
@@ -90,17 +77,5 @@
     h4 {
         font-size: var(--text-h4);
         font-weight: 500;
-    }
-
-    .app-container {
-        display: flex;
-        height: 100vh;
-    }
-
-    .main-content {
-        flex: 1;
-        /* background-color: var(--bg-primary); */
-        color: var(--text-primary);
-        padding: 20px;
     }
 </style>
