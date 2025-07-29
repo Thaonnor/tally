@@ -1,23 +1,23 @@
 <template>
-    <div class="sidebar">
-        <div class="app-title">
-            <h2>Tally</h2>
+    <div class="w-60 xl:w-80 2xl:w-80 bg-gray-800 text-gray-50 flex flex-col">
+        <div class="px-5 pt-4 pb-4 border-b border-gray-600">
+            <h2 class="text-2xl font-semibold text-indigo-500">Tally</h2>
         </div>
 
-        <nav class="main-nav">
-            <ul>
-                <li><a href="#" class="nav-link active">Dashboard</a></li>
-                <li><a href="#" class="nav-link">Reports</a></li>
-                <li><a href="#" class="nav-link">Settings</a></li>
+        <nav class="py-4 border-b border-gray-600">
+            <ul class="list-none">
+                <li><a href="#" class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50 bg-gray-600 text-gray-50">Dashboard</a></li>
+                <li><a href="#" class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray">Reports</a></li>
+                <li><a href="#" class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray">Settings</a></li>
             </ul>
         </nav>
 
-        <div class="accounts-section">
-            <div class="accounts-header">
-                <h3>Accounts</h3>
-                <button @click="showAddModal = true" class="add-btn">+</button>
+        <div class="flex-1 py-4">
+            <div class="flex justify-between items-center px-5 pb-3">
+                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Accounts</h3>
+                <button @click="showAddModal = true" class="bg-indigo-500 text-white border-none rounded w-6 h-6 cursor-pointer">+</button>
             </div>
-            <ul class="account-list">
+            <ul class="list-none">
                 <AccountItem name="Chase Checking" :balance="1250.75" />
                 <AccountItem name="Savings Account" :balance="5000.0" />
                 <AccountItem name="Credit Card" :balance="Number(-340.2)" />
@@ -56,102 +56,8 @@
         },
         methods: {
             handleAddAccount(accountData) {
-                console.log('New account:', accountData);
                 this.showAddModal = false;
             },
         },
     };
 </script>
-
-<style scoped>
-    .sidebar {
-        width: 280px;
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
-        padding: 0; /* Remove the 20px padding */
-        display: flex;
-        flex-direction: column;
-    }
-
-    .app-title {
-        padding: 24px 20px 16px;
-        border-bottom: 1px solid var(--bg-tertiary);
-    }
-
-    .app-title h2 {
-        font-size: 24px;
-        font-weight: 600;
-        color: var(--primary);
-    }
-
-    .main-nav {
-        padding: 16px 0;
-        border-bottom: 1px solid var(--bg-tertiary);
-    }
-
-    .main-nav ul {
-        list-style: none;
-    }
-
-    .nav-link {
-        display: block;
-        padding: 12px 20px;
-        color: var(--text-secondary);
-        text-decoration: none;
-        transition: background-color 0.2s;
-    }
-
-    .nav-link:hover,
-    .nav-link.active {
-        background-color: var(--bg-tertiary);
-        color: var(--text-primary);
-    }
-
-    .accounts-section {
-        flex: 1;
-        padding: 16px 0;
-    }
-
-    .accounts-section h3 {
-        padding: 0 20px 12px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .accounts-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 20px 12px;
-    }
-
-    .add-btn {
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        width: 24px;
-        height: 24px;
-        cursor: pointer;
-    }
-
-    .account-list {
-        list-style: none;
-    }
-
-    /* Responsive adjustments */
-    @media (min-width: 1920px) {
-        .sidebar {
-            width: 320px;
-        }
-    }
-
-    @media (max-width: 1366px) {
-        .sidebar {
-            width: 240px;
-        }
-    }
-</style>
