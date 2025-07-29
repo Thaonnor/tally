@@ -165,3 +165,13 @@ pub async fn update_account_balance(
     // Returns true if the row was successfully updated
     Ok(result.rows_affected() > 0)
 }
+
+pub async fn get_all_accounts_with_balance(
+    pool: &Pool<Sqlite>,
+) -> Result<Vec<(i64, String, String, Option<f64>)>, sqlx::Error> {
+    let accounts = sqlx::query_as::<_, (i64, String, String, Option<f64>)>(
+        "SELECT id, name, type, current_balance FROM accounts WHERE archived = FALSE ORDER BY display_order, name",
+    ).fetch_all(pool).await?;
+
+    Ok(accounts)
+}

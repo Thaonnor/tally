@@ -9,6 +9,7 @@ async fn main() {
 
     tauri::Builder::default()
         .manage(pool)
+        .invoke_handler(tauri::generate_handler![get_accounts])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -32,4 +33,14 @@ async fn initialize_database() -> sqlx::SqlitePool {
         .expect("Failed to create transfers table.");
 
     pool
+}
+
+#[tauri::command]
+async fn get_accounts(
+    pool: tauri::State<'_, sqlx::SqlitePool>,
+) -> Result<Vec<(i64, String, String, Option<f64>)>, String> {
+    match database::get_all_accounts_with_balance(&pool).await {
+        Ok(accounts) => Ok(accounts),
+        Err(e) => Err(format!("Failed to get accounts: {}", e)),
+    }
 }

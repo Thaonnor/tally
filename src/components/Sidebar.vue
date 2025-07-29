@@ -6,21 +6,51 @@
 
         <nav class="py-4 border-b border-gray-600">
             <ul class="list-none">
-                <li><a href="#" class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50 bg-gray-600 text-gray-50">Dashboard</a></li>
-                <li><a href="#" class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray">Reports</a></li>
-                <li><a href="#" class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray">Settings</a></li>
+                <li>
+                    <a
+                        href="#"
+                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50 bg-gray-600 text-gray-50"
+                        >Dashboard</a
+                    >
+                </li>
+                <li>
+                    <a
+                        href="#"
+                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray"
+                        >Reports</a
+                    >
+                </li>
+                <li>
+                    <a
+                        href="#"
+                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray"
+                        >Settings</a
+                    >
+                </li>
             </ul>
         </nav>
 
         <div class="flex-1 py-4">
             <div class="flex justify-between items-center px-5 pb-3">
-                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Accounts</h3>
-                <button @click="showAddModal = true" class="bg-indigo-500 text-white border-none rounded w-6 h-6 cursor-pointer">+</button>
+                <h3
+                    class="text-sm font-semibold text-gray-400 uppercase tracking-wide"
+                >
+                    Accounts
+                </h3>
+                <button
+                    @click="showAddModal = true"
+                    class="bg-indigo-500 text-white border-none rounded w-6 h-6 cursor-pointer"
+                >
+                    +
+                </button>
             </div>
             <ul class="list-none">
-                <AccountItem name="Chase Checking" :balance="1250.75" />
-                <AccountItem name="Savings Account" :balance="5000.0" />
-                <AccountItem name="Credit Card" :balance="Number(-340.2)" />
+                <AccountItem
+                    v-for="account in accounts"
+                    :key="account[0]"
+                    :name="account[1]"
+                    :balance="account[3] || 0"
+                />
             </ul>
         </div>
     </div>
@@ -42,6 +72,7 @@
     import AccountItem from './AccountItem.vue';
     import Modal from './Modal.vue';
     import AccountForm from './AccountForm.vue';
+    import { invoke } from '@tauri-apps/api/core';
     export default {
         name: 'Sidebar',
         components: {
@@ -52,11 +83,30 @@
         data() {
             return {
                 showAddModal: false,
+                accounts: [],
             };
+        },
+        async mounted() {
+            await this.loadAccounts();
         },
         methods: {
             handleAddAccount(accountData) {
                 this.showAddModal = false;
+            },
+            async loadAccounts() {
+                try {
+                    console.log('Loading accounts...');
+                    this.accounts = await invoke('get_accounts');
+                    console.log('Loaded accounts:', this.accounts);
+                } catch (error) {
+                    console.error('Failed to load accounts:', error);
+                    // Fallback to mock data if invoke fails
+                    this.accounts = [
+                        [1, 'Chase Checking', 'checking', 1250.75],
+                        [2, 'Savings Account', 'savings', 5000.0],
+                    ];
+                    console.log('Using mock data instead');
+                }
             },
         },
     };
