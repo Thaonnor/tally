@@ -175,3 +175,23 @@ pub async fn get_all_accounts_with_balance(
 
     Ok(accounts)
 }
+
+pub async fn insert_account_full(
+    pool: &Pool<Sqlite>,
+    name: &str,
+    account_type: &str,
+    institution: Option<&str>,
+    current_balance: Option<f64>,
+) -> Result<i64, sqlx::Error> {
+    let result = sqlx::query(
+        "INSERT INTO accounts (name, type, institution, current_balance) VALUES (?, ?, ?, ?)",
+    )
+    .bind(name)
+    .bind(account_type)
+    .bind(institution)
+    .bind(current_balance)
+    .execute(pool)
+    .await?;
+
+    Ok(result.last_insert_rowid())
+}

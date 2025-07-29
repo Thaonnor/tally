@@ -90,8 +90,29 @@
             await this.loadAccounts();
         },
         methods: {
-            handleAddAccount(accountData) {
-                this.showAddModal = false;
+            async handleAddAccount(accountData) {
+                try {
+                    console.log('Adding account:', accountData);
+
+                    const accountId = await invoke('add_account', {
+                        name: accountData.name,
+                        accountType: accountData.type,
+                        institution: accountData.institution || null,
+                        currentBalance: accountData.currentBalance || null
+                    });
+
+                    console.log('Account added with ID:', accountId);
+
+                    // Refresh the account list
+                    await this.loadAccounts();
+
+                    // Close the modal
+                    this.showAddModal = false;
+                } catch (error) {
+                    console.error('Failed to add account:', error);
+                    // For now, just close modal on error
+                    this.showAddModal = false;
+                }
             },
             async loadAccounts() {
                 try {
