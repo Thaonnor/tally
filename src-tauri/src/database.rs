@@ -169,11 +169,19 @@ pub async fn update_account_balance(
 pub async fn get_all_accounts_with_balance(
     pool: &Pool<Sqlite>,
 ) -> Result<Vec<(i64, String, String, Option<f64>)>, sqlx::Error> {
-    let accounts = sqlx::query_as::<_, (i64, String, String, Option<f64>)>(
-        "SELECT id, name, type, current_balance FROM accounts WHERE archived = FALSE ORDER BY display_order, name",
-    ).fetch_all(pool).await?;
+    let accounts = sqlx::query_as::<_, (i64, String, String, Option<i64>)>(
+       "SELECT id, name, type, current_balance FROM accounts WHERE archived = FALSE ORDER BY display_order, name",
+   ).fetch_all(pool).await?;
 
-    Ok(accounts)
+    let result = accounts
+        .into_iter()
+        .map(|(id, name, type_, balance_cents)| {
+            let balance_dollars = balance_cents.map(|cents| cents as f64 / 100.0);
+            (id, name, type_, balance_dollars)
+        })
+        .collect();
+
+    Ok(result)
 }
 
 pub async fn insert_account_full(
@@ -183,13 +191,15 @@ pub async fn insert_account_full(
     institution: Option<&str>,
     current_balance: Option<f64>,
 ) -> Result<i64, sqlx::Error> {
+    let balance_cents = current_balance.map(|b| (b * 100.0).round() as i64); // Convert to cents for database storage. 
+
     let result = sqlx::query(
         "INSERT INTO accounts (name, type, institution, current_balance) VALUES (?, ?, ?, ?)",
     )
     .bind(name)
     .bind(account_type)
     .bind(institution)
-    .bind(current_balance)
+    .bind(balance_cents)
     .execute(pool)
     .await?;
 
