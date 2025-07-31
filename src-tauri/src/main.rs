@@ -9,7 +9,11 @@ async fn main() {
 
     tauri::Builder::default()
         .manage(pool)
-        .invoke_handler(tauri::generate_handler![get_accounts, add_account])
+        .invoke_handler(tauri::generate_handler![
+            get_accounts,
+            add_account,
+            get_account_by_id
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -39,7 +43,7 @@ async fn initialize_database() -> sqlx::SqlitePool {
 async fn get_accounts(
     pool: tauri::State<'_, sqlx::SqlitePool>,
 ) -> Result<Vec<(i64, String, String, Option<f64>)>, String> {
-    match database::get_all_accounts_with_balance(&pool).await {
+    match database::get_all_accounts(&pool).await {
         Ok(accounts) => Ok(accounts),
         Err(e) => Err(format!("Failed to get accounts: {}", e)),
     }
@@ -53,7 +57,7 @@ async fn add_account(
     institution: Option<String>,
     current_balance: Option<f64>,
 ) -> Result<i64, String> {
-    match database::insert_account_full(
+    match database::insert_account(
         &pool,
         &name,
         &account_type,
@@ -65,4 +69,14 @@ async fn add_account(
         Ok(id) => Ok(id),
         Err(e) => Err(format!("Failed to add account: {}", e)),
     }
+}
+
+#[tauri::command]
+async fn get_account_by_id(
+    id: i64,
+    state: tauri::State<'_, sqlx::SqlitePool>,
+) -> Result<Option<(i64, String, String, Option<f64>)>, String> {
+    database::get_account_by_id(&state, id)
+        .await
+        .map_err(|e| e.to_string())
 }

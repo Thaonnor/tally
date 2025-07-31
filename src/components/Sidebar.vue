@@ -7,24 +7,27 @@
         <nav class="py-4 border-b border-gray-600">
             <ul class="list-none">
                 <li>
-                    <a
-                        href="#"
-                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50 bg-gray-600 text-gray-50"
-                        >Dashboard</a
+                    <router-link
+                        to="/"
+                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50"
+                        active-class="bg-gray-600 text-gray-50"
+                        >Dashboard</router-link
                     >
                 </li>
                 <li>
-                    <a
-                        href="#"
-                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray"
-                        >Reports</a
+                    <router-link
+                        to="/reports"
+                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50"
+                        active-class="bg-gray-600 text-gray-50"
+                        >Reports</router-link
                     >
                 </li>
                 <li>
-                    <a
-                        href="#"
-                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray"
-                        >Settings</a
+                    <router-link
+                        to="/settings"
+                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50"
+                        active-class="bg-gray-600 text-gray-50"
+                        >Settings</router-link
                     >
                 </li>
             </ul>
@@ -48,6 +51,7 @@
                 <AccountItem
                     v-for="account in accounts"
                     :key="account[0]"
+                    :id="account[0]"
                     :name="account[1]"
                     :balance="account[3] || 0"
                 />
@@ -98,7 +102,7 @@
                         name: accountData.name,
                         accountType: accountData.type,
                         institution: accountData.institution || null,
-                        currentBalance: accountData.currentBalance || null
+                        currentBalance: accountData.currentBalance || null,
                     });
 
                     console.log('Account added with ID:', accountId);

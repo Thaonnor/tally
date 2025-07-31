@@ -24,7 +24,7 @@ pub async fn create_accounts_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Erro
             type TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            current_balance DECIMAL(15,2),
+            current_balance INTEGER,
             institution TEXT,
             display_order INTEGER,
             archived BOOLEAN DEFAULT FALSE,
@@ -46,7 +46,7 @@ pub async fn create_transactions_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::
             id INTEGER PRIMARY KEY,
             account_id INTEGER NOT NULL REFERENCES accounts(id),
             date DATE NOT NULL,
-            amount DECIMAL(15, 2) NOT NULL,
+            amount INTEGER NOT NULL,
             description TEXT,
             category_id INTEGER REFERENCES categories(id),
             pending BOOLEAN DEFAULT FALSE,
@@ -109,64 +109,25 @@ pub async fn create_transfers_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Err
     Ok(())
 }
 
-pub async fn insert_account(
-    pool: &Pool<Sqlite>,
-    name: &str,
-    account_type: &str,
-) -> Result<i64, sqlx::Error> {
-    let result = sqlx::query("INSERT INTO accounts (name, type) VALUES (?, ?)")
-        .bind(name)
-        .bind(account_type)
-        .execute(pool)
-        .await?;
-
-    Ok(result.last_insert_rowid())
-}
-
-pub async fn get_all_accounts(
-    pool: &Pool<Sqlite>,
-) -> Result<Vec<(i64, String, String)>, sqlx::Error> {
-    let accounts = sqlx::query_as::<_, (i64, String, String)>(
-        "SELECT id, name, type FROM accounts WHERE archived = FALSE ORDER BY display_order, name",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(accounts)
-}
-
 pub async fn get_account_by_id(
     pool: &Pool<Sqlite>,
     id: i64,
-) -> Result<Option<(i64, String, String)>, sqlx::Error> {
-    let account = sqlx::query_as::<_, (i64, String, String)>(
-        "SELECT id, name, type FROM accounts WHERE id = ? AND archived = FALSE",
+) -> Result<Option<(i64, String, String, Option<f64>)>, sqlx::Error> {
+    let account = sqlx::query_as::<_, (i64, String, String, Option<i64>)>(
+        "SELECT id, name, type, current_balance FROM accounts WHERE id = ? AND archived = FALSE",
     )
     .bind(id)
     .fetch_optional(pool)
     .await?;
 
-    Ok(account)
+    let result = account.map(|(id, name, type_, balance_cents)| {
+        (id, name, type_, cents_to_dollars_option(balance_cents))
+    });
+
+    Ok(result)
 }
 
-pub async fn update_account_balance(
-    pool: &Pool<Sqlite>,
-    id: i64,
-    new_balance: f64,
-) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "UPDATE accounts SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND archived = FALSE"
-    )
-    .bind(new_balance)
-    .bind(id)
-    .execute(pool)
-    .await?;
-
-    // Returns true if the row was successfully updated
-    Ok(result.rows_affected() > 0)
-}
-
-pub async fn get_all_accounts_with_balance(
+pub async fn get_all_accounts(
     pool: &Pool<Sqlite>,
 ) -> Result<Vec<(i64, String, String, Option<f64>)>, sqlx::Error> {
     let accounts = sqlx::query_as::<_, (i64, String, String, Option<i64>)>(
@@ -176,32 +137,79 @@ pub async fn get_all_accounts_with_balance(
     let result = accounts
         .into_iter()
         .map(|(id, name, type_, balance_cents)| {
-            let balance_dollars = balance_cents.map(|cents| cents as f64 / 100.0);
-            (id, name, type_, balance_dollars)
+            (id, name, type_, cents_to_dollars_option(balance_cents))
         })
         .collect();
 
     Ok(result)
 }
 
-pub async fn insert_account_full(
+pub async fn insert_account(
     pool: &Pool<Sqlite>,
     name: &str,
     account_type: &str,
     institution: Option<&str>,
     current_balance: Option<f64>,
 ) -> Result<i64, sqlx::Error> {
-    let balance_cents = current_balance.map(|b| (b * 100.0).round() as i64); // Convert to cents for database storage. 
-
     let result = sqlx::query(
         "INSERT INTO accounts (name, type, institution, current_balance) VALUES (?, ?, ?, ?)",
     )
     .bind(name)
     .bind(account_type)
     .bind(institution)
-    .bind(balance_cents)
+    .bind(dollars_to_cents_option(current_balance))
     .execute(pool)
     .await?;
 
     Ok(result.last_insert_rowid())
+}
+
+// Get balance for a specific account (returns dollars)
+pub async fn get_account_balance(
+    pool: &Pool<Sqlite>,
+    account_id: i64,
+) -> Result<Option<f64>, sqlx::Error> {
+    let balance_cents = sqlx::query_scalar::<_, Option<i64>>(
+        "SELECT current_balance FROM accounts WHERE id = ? AND archived = FALSE",
+    )
+    .bind(account_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(balance_cents.flatten().map(|cents| cents as f64 / 100.0))
+}
+
+// Set balance for a specific account (accepts dollars)
+pub async fn set_account_balance(
+    pool: &Pool<Sqlite>,
+    account_id: i64,
+    balance_dollars: f64,
+) -> Result<(), sqlx::Error> {
+    let balance_cents = (balance_dollars * 100.0).round() as i64;
+
+    sqlx::query(
+        "UPDATE accounts SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    )
+    .bind(balance_cents)
+    .bind(account_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub fn dollars_to_cents(dollars: f64) -> i64 {
+    (dollars * 100.0).round() as i64
+}
+
+pub fn cents_to_dollars(cents: i64) -> f64 {
+    cents as f64 / 100.0
+}
+
+pub fn dollars_to_cents_option(dollars: Option<f64>) -> Option<i64> {
+    dollars.map(dollars_to_cents)
+}
+
+pub fn cents_to_dollars_option(cents: Option<i64>) -> Option<f64> {
+    cents.map(cents_to_dollars)
 }
