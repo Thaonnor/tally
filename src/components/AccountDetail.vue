@@ -17,6 +17,7 @@
                         {{ formatBalance(account.current_balance) }}
                     </div>
                     <button
+                        @click="showTransactionModal = true"
                         class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded mt-2"
                     >
                         Add Transaction
@@ -60,18 +61,34 @@
                 </tbody>
             </table>
         </div>
+
+        <Modal
+            :isOpen="showTransactionModal"
+            title="Add Transaction"
+            @close="showTransactionModal = false"
+        >
+            <TransactionForm @cancel="showTransactionModal = false" />
+        </Modal>
     </div>
 </template>
 
 <script>
     import { invoke } from '@tauri-apps/api/core';
+    import TransactionForm from './TransactionForm.vue';
+    import Modal from './Modal.vue';
 
     export default {
         name: 'AccountDetail',
+        components: {
+            TransactionForm,
+            Modal,
+        },
         props: ['id'], // This comes from the router
         data() {
             return {
+                showTransactionModal: false,
                 account: {
+                    id: null,
                     name: 'Loading...',
                     type: '',
                     current_balance: 0,
@@ -91,9 +108,9 @@
         },
         watch: {
             // Watch for route change
-            '$route'(to, from) {
+            $route(to, from) {
                 this.loadAccount();
-            }
+            },
         },
         methods: {
             async loadAccount() {
