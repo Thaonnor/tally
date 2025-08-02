@@ -12,7 +12,9 @@ async fn main() {
         .invoke_handler(tauri::generate_handler![
             get_accounts,
             add_account,
-            get_account_by_id
+            get_account_by_id,
+            add_transaction,
+            get_transactions
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -79,4 +81,93 @@ async fn get_account_by_id(
     database::get_account_by_id(&state, id)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn add_transaction(
+    pool: tauri::State<'_, sqlx::SqlitePool>,
+    account_id: i64,
+    date: String,
+    amount: f64,
+    description: Option<String>,
+    payee: Option<String>,
+    memo: Option<String>,
+    category_id: Option<i64>,
+    pending: bool,
+    cleared: bool,
+) -> Result<i64, String> {
+    match database::insert_transaction(
+        &pool,
+        account_id,
+        &date,
+        amount,
+        description.as_deref(),
+        payee.as_deref(),
+        memo.as_deref(),
+        category_id,
+        pending,
+        cleared,
+    )
+    .await
+    {
+        Ok(id) => Ok(id),
+        Err(e) => Err(format!("Failed to add transaction: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn get_transactions(
+    pool: tauri::State<'_, sqlx::SqlitePool>,
+    account_id: i64,
+    limit: i32,
+    offset: i32,
+) -> Result<
+    Vec<(
+        i64,
+        String,
+        f64,
+        Option<i64>,
+        Option<String>,
+        Option<String>,
+        bool,
+        bool,
+        String,
+    )>,
+    String,
+> {
+    match database::get_account_transactions(&pool, account_id, limit, offset).await {
+        Ok(transactions) => {
+            // Convert amount from cents to dollars
+            let result = transactions
+                .into_iter()
+                .map(
+                    |(
+                        id,
+                        date,
+                        amount_cents,
+                        category_id,
+                        description,
+                        payee,
+                        pending,
+                        cleared,
+                        transaction_type,
+                    )| {
+                        (
+                            id,
+                            date,
+                            database::cents_to_dollars(amount_cents),
+                            category_id,
+                            description,
+                            payee,
+                            pending,
+                            cleared,
+                            transaction_type,
+                        )
+                    },
+                )
+                .collect();
+            Ok(result)
+        },
+        Err(e) => Err(format!("Failed to get transactions: {}", e)),
+    }
 }

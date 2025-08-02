@@ -4,9 +4,9 @@
             <label for="amount" class="block mb-2 font-medium text-gray-50"
                 >Amount *</label
             >
-            <!-- Add v-model.number="form.amount" -->
             <input
                 id="amount"
+                v-model.number="form.amount"
                 type="number"
                 step="0.01"
                 required
@@ -19,9 +19,9 @@
             <label for="description" class="block mb-2 font-medium text-gray-50"
                 >Description</label
             >
-            <!-- Add v-model."form.description" -->
             <input
                 id="description"
+                v-model="form.description"
                 type="text"
                 placeholder="What was this for?"
                 class="w-full p-3 border border-gray-600 rounded bg-gray-900 focus:outline-none focus:border-indigo-500"
@@ -32,9 +32,9 @@
             <label for="date" class="block mb-2 font-medium text-gray-50"
                 >Date *</label
             >
-            <!-- Add v-model."form.date" -->
             <input
                 id="date"
+                v-model="form.date"
                 type="date"
                 required
                 class="w-full p-3 border border-gray-600 rounded bg-gray-900 text-gray-50 focus:outline-none focus:border-indigo-500"
@@ -47,6 +47,7 @@
             >
             <input
                 id="payee"
+                v-model="form.payee"
                 type="text"
                 placeholder="e.g. Grocery Store, John Doe"
                 class="w-full p-3 border border-gray-600 rounded bg-gray-900 text-gray-50 focus:outline-none focus:border-indigo-500"
@@ -59,11 +60,12 @@
             >
             <select
                 id="category"
+                v-model.number="form.categoryId"
                 class="w-full p-3 pr-10 border border-gray-600 rounded bg-gray-900 text-gray-50 focus:outline-none focus:border-indigo-500 appearance-none"
             >
-                <option value="1">Uncategorized</option>
-                <option value="2">Gas</option>
-                <option value="3">Dining Out</option>
+                <option :value="null">Uncategorized</option>
+                <option :value="1">Gas</option>
+                <option :value="2">Dining Out</option>
             </select>
         </div>
 
@@ -73,6 +75,7 @@
             >
             <textarea
                 id="memo"
+                v-model="form.memo"
                 rows="3"
                 placeholder="Additional notes..."
                 class="w-full p-3 border border-gray-600 rounded bg-gray-900 text-gray-50 focus:outline-none focus:border-indigo-500 resize-none"
@@ -82,11 +85,19 @@
         <div class="mb-4">
             <div class="flex items-center gap-6">
                 <label class="flex items-center">
-                    <input type="checkbox" class="mr-2 accent-indigo-500 w-4 h-4" />
+                    <input
+                        type="checkbox"
+                        v-model="form.pending"
+                        class="mr-2 accent-indigo-500 w-4 h-4"
+                    />
                     <span class="text-gray-50">Pending</span>
                 </label>
                 <label class="flex items-center">
-                    <input type="checkbox" class="mr-2 accent-indigo-500 w-4 h-4" />
+                    <input
+                        type="checkbox"
+                        v-model="form.cleared"
+                        class="mr-2 accent-indigo-500 w-4 h-4"
+                    />
                     <span class="text-gray-50">Cleared</span>
                 </label>
             </div>
@@ -111,8 +122,16 @@
 </template>
 
 <script>
+    import { invoke } from '@tauri-apps/api/core';
+
     export default {
         name: 'TransactionForm',
+        props: {
+            accountId: {
+                type: Number,
+                required: true,
+            },
+        },
         data() {
             return {
                 form: {
@@ -128,9 +147,27 @@
             };
         },
         methods: {
-            handleSubmit() {
-                console.log('Form submitted:', this.form);
-                // we'll handle this later
+            async handleSubmit() {
+                try {
+                    console.log('Submitting transaction:', this.form);
+
+                    const result = await invoke('add_transaction', {
+                        accountId: this.accountId,
+                        date: this.form.date,
+                        amount: this.form.amount,
+                        description: this.form.description || null,
+                        payee: this.form.payee || null,
+                        memo: this.form.memo || null,
+                        categoryId: this.form.categoryId || null,
+                        pending: this.form.pending,
+                        cleared: this.form.cleared,
+                    });
+
+                    console.log('Transaction added with ID:', result);
+                    this.$emit('success');
+                } catch (error) {
+                    console.error('Failed to add transaction:', error);
+                }
             },
         },
     };

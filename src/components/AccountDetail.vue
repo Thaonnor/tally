@@ -67,7 +67,10 @@
             title="Add Transaction"
             @close="showTransactionModal = false"
         >
-            <TransactionForm @cancel="showTransactionModal = false" />
+            <TransactionForm
+                :accountId="account.id"
+                @cancel="showTransactionModal = false"
+            />
         </Modal>
     </div>
 </template>
@@ -94,6 +97,7 @@
                     current_balance: 0,
                     updated_at: new Date(),
                 },
+                transactions: [],
             };
         },
         computed: {
@@ -105,6 +109,7 @@
         },
         async mounted() {
             await this.loadAccount();
+            await this.loadTransactions();
         },
         watch: {
             // Watch for route change
@@ -130,6 +135,34 @@
                     }
                 } catch (error) {
                     console.error('Failed to load account:', error);
+                }
+            },
+            async loadTransactions() {
+                try {
+                    console.log(
+                        'Loading transactions for accountID:',
+                        parseInt(this.id)
+                    );
+                    this.transactions = await invoke('get_transactions', {
+                        accountId: parseInt(this.id),
+                        limit: 50,
+                        offset: 0,
+                    });
+                    console.log(
+                        'Raw transactions response:',
+                        this.transactions
+                    );
+                    console.log(
+                        'Number of transactions:',
+                        this.transactions.length
+                    );
+
+                    // Log each transaction individually
+                    this.transactions.forEach((txn, index) => {
+                        console.log(`Transaction ${index}:`, txn);
+                    });
+                } catch (error) {
+                    console.log('Failed to load transactions:', error);
                 }
             },
             formatBalance(amount) {

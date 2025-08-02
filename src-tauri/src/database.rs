@@ -213,3 +213,51 @@ pub fn dollars_to_cents_option(dollars: Option<f64>) -> Option<i64> {
 pub fn cents_to_dollars_option(cents: Option<i64>) -> Option<f64> {
     cents.map(cents_to_dollars)
 }
+
+pub async fn insert_transaction(
+    pool: &Pool<Sqlite>,
+    account_id: i64,
+    date: &str,
+    amount: f64,
+    description: Option<&str>,
+    payee: Option<&str>,
+    memo: Option<&str>,
+    category_id: Option<i64>,
+    pending: bool,
+    cleared: bool,
+) -> Result<i64, sqlx::Error> {
+    let amount_cents = dollars_to_cents(amount);
+
+    let result = sqlx::query(
+        r#"INSERT INTO transactions (account_id, date, amount, description, payee, memo, category_id, pending, cleared, transaction_type, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'expense', 'manual')"#,
+    ).bind(account_id).bind(date).bind(amount_cents).bind(description).bind(payee).bind(memo).bind(category_id).bind(pending).bind(cleared).execute(pool).await?;
+
+    Ok(result.last_insert_rowid())
+}
+
+pub async fn get_account_transactions(
+    pool: &Pool<Sqlite>,
+    account_id: i64,
+    limit: i32,
+    offset: i32,
+) -> Result<
+    Vec<(
+        i64,
+        String,
+        i64,
+        Option<i64>,
+        Option<String>,
+        Option<String>,
+        bool,
+        bool,
+        String,
+    )>,
+    sqlx::Error,
+> {
+    let transactions = sqlx::query_as::<_, (i64, String, i64, Option<i64>, Option<String>, Option<String>, bool, bool, String)>(
+            r#"
+            SELECT id, date, amount, category_id, description, payee, pending, cleared, transaction_type FROM transactions WHERE account_id = ? ORDER BY date DESC, id DESC LIMIT ? OFFSET ?"#,
+        ).bind(account_id).bind(limit).bind(offset).fetch_all(pool).await?;
+
+    Ok(transactions)
+}
