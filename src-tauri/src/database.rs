@@ -1,5 +1,25 @@
-use sqlx::{Pool, Sqlite, sqlite::SqlitePool};
+use serde::{Deserialize, Serialize};
+use sqlx::{Pool, Sqlite, sqlite::SqlitePool, Row};
 use std::fs::File;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Transaction {
+    pub id: i64,
+    pub account_id: i64,
+    pub date: String,
+    pub amount: f64,
+    pub description: String,
+    pub category_id: i64,
+    pub pending: bool,
+    pub transaction_type: String,
+    pub created_at: String,
+    pub reconciled: bool,
+    pub import_id: Option<String>,
+    pub source: Option<String>,
+    pub payee: Option<String>,
+    pub original_description: Option<String>,
+    pub memo: Option<String>,
+}
 
 pub async fn create_connection() -> Result<Pool<Sqlite>, sqlx::Error> {
     let db_path = "./tally.db";
@@ -240,24 +260,43 @@ pub async fn get_account_transactions(
     account_id: i64,
     limit: i32,
     offset: i32,
-) -> Result<
-    Vec<(
-        i64,
-        String,
-        i64,
-        Option<i64>,
-        Option<String>,
-        Option<String>,
-        bool,
-        bool,
-        String,
-    )>,
-    sqlx::Error,
-> {
-    let transactions = sqlx::query_as::<_, (i64, String, i64, Option<i64>, Option<String>, Option<String>, bool, bool, String)>(
-            r#"
-            SELECT id, date, amount, category_id, description, payee, pending, cleared, transaction_type FROM transactions WHERE account_id = ? ORDER BY date DESC, id DESC LIMIT ? OFFSET ?"#,
-        ).bind(account_id).bind(limit).bind(offset).fetch_all(pool).await?;
+) -> Result<Vec<Transaction>, sqlx::Error> {
+    let rows = sqlx::query(
+        r#"
+            SELECT
+                id, account_id, date, amount, description, category_id, pending, transaction_type, created_at, reconciled, import_id, source, payee, original_description, memo
+            FROM transactions
+            WHERE account_id = ?
+            ORDER BY date DESC, id DESC
+            LIMIT ? OFFSET ?
+        "#,
+    )
+    .bind(account_id)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(pool)
+    .await?;
+    
+    let mut transactions = Vec::new();
+    for row in rows {
+        transactions.push(Transaction {
+            id: row.get("id"),
+            account_id: row.get("account_id"),
+            date: row.get("date"),
+            amount: cents_to_dollars(row.get("amount")),
+            description: row.get("description"),
+            category_id: row.get("category_id"),
+            pending: row.get("pending"),
+            transaction_type: row.get("transaction_type"),
+            created_at: row.get("created_at"),
+            reconciled: row.get("reconciled"),
+            import_id: row.get("import_id"),
+            source: row.get("source"),
+            payee: row.get("payee"),
+            original_description: row.get("original_description"),
+            memo: row.get("memo")
+        });
+    }
 
     Ok(transactions)
 }

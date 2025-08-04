@@ -42,7 +42,7 @@
         </div>
 
         <div class="mb-4">
-            <label for="payee" class="block mb-2 font-medium text-gray 50"
+            <label for="payee" class="block mb-2 font-medium text-gray-50"
                 >Payee</label
             >
             <input
@@ -139,7 +139,7 @@
                     description: '',
                     date: new Date().toISOString().split('T')[0],
                     payee: '',
-                    categoryId: '',
+                    categoryId: null,
                     memo: '',
                     pending: false,
                     cleared: false,

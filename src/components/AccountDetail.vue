@@ -52,10 +52,54 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- We'll add more rows here -->
-                    <tr class="border-t border-gray-600">
+                    <tr
+                        v-if="transactions.length === 0"
+                        class="border-t border-gray-600"
+                    >
                         <td class="p-4 text-gray-400" colspan="6">
                             No transactions yet
+                        </td>
+                    </tr>
+                    <tr
+                        v-for="transaction in transactions"
+                        :key="transaction.id"
+                        class="border-t border-gray-600 hover:bg-gray-750"
+                    >
+                        <td class="p-4 text-gray-50">
+                            {{ formatDate(transaction.date) }}
+                        </td>
+                        <td class="p-4 text-gray-50">
+                            {{ transaction.payee || 'No Payee' }}
+                        </td>
+                        <td class="p-4 text-gray-300">
+                            {{
+                                transaction.category_id
+                                    ? 'Category ' + transaction.category_id
+                                    : 'Uncategorized'
+                            }}
+                        </td>
+                        <td
+                            class="p-4 text-gray-50"
+                            :class="
+                                transaction.amount >= 0
+                                    ? 'text-emerald-500'
+                                    : 'text-red-500'
+                            "
+                        >
+                            {{ formatBalance(transaction.amount) }}
+                        </td>
+                        <td class="p-4 text-gray-300">-</td>
+                        <td class="p-4 text-gray-300">
+                            <span
+                                v-if="transaction.pending"
+                                class="text-yellow-400"
+                                >Pending</span
+                            >
+                            <span
+                                v-if="transaction.reconciled"
+                                class="text-green-400"
+                                >Reconciled</span
+                            >
                         </td>
                     </tr>
                 </tbody>

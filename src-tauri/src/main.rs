@@ -121,53 +121,9 @@ async fn get_transactions(
     account_id: i64,
     limit: i32,
     offset: i32,
-) -> Result<
-    Vec<(
-        i64,
-        String,
-        f64,
-        Option<i64>,
-        Option<String>,
-        Option<String>,
-        bool,
-        bool,
-        String,
-    )>,
-    String,
-> {
+) -> Result<Vec<database::Transaction>, String> {
     match database::get_account_transactions(&pool, account_id, limit, offset).await {
-        Ok(transactions) => {
-            // Convert amount from cents to dollars
-            let result = transactions
-                .into_iter()
-                .map(
-                    |(
-                        id,
-                        date,
-                        amount_cents,
-                        category_id,
-                        description,
-                        payee,
-                        pending,
-                        cleared,
-                        transaction_type,
-                    )| {
-                        (
-                            id,
-                            date,
-                            database::cents_to_dollars(amount_cents),
-                            category_id,
-                            description,
-                            payee,
-                            pending,
-                            cleared,
-                            transaction_type,
-                        )
-                    },
-                )
-                .collect();
-            Ok(result)
-        },
+        Ok(transactions) => Ok(transactions),
         Err(e) => Err(format!("Failed to get transactions: {}", e)),
     }
 }
