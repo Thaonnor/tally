@@ -50,10 +50,10 @@
             <ul class="list-none">
                 <AccountItem
                     v-for="account in accounts"
-                    :key="account[0]"
-                    :id="account[0]"
-                    :name="account[1]"
-                    :balance="account[3] || 0"
+                    :key="account.id"
+                    :id="account.id"
+                    :name="account.name"
+                    :balance="account.current_balance || 0"
                 />
             </ul>
         </div>
@@ -120,17 +120,39 @@
             },
             async loadAccounts() {
                 try {
-                    console.log('Loading accounts...');
                     this.accounts = await invoke('get_accounts');
                     console.log('Loaded accounts:', this.accounts);
                 } catch (error) {
                     console.error('Failed to load accounts:', error);
                     // Fallback to mock data if invoke fails
                     this.accounts = [
-                        [1, 'Chase Checking', 'checking', 1250.75],
-                        [2, 'Savings Account', 'savings', 5000.0],
+                        {
+                            id: 1,
+                            name: 'Chase Checking',
+                            account_type: 'checking',
+                            current_balance: 1250.75,
+                            institution: 'Chase',
+                            display_order: 1,
+                            archived: false,
+                            include_in_net_worth: true,
+                            account_number_last4: null,
+                            created_at: '2024-01-01 00:00:00',
+                            updated_at: '2024-01-01 00:00:00'
+                        },
+                        {
+                            id: 2,
+                            name: 'Savings Account',
+                            account_type: 'savings',
+                            current_balance: 5000.0,
+                            institution: null,
+                            display_order: 2,
+                            archived: false,
+                            include_in_net_worth: true,
+                            account_number_last4: null,
+                            created_at: '2024-01-01 00:00:00',
+                            updated_at: '2024-01-01 00:00:00'
+                        }
                     ];
-                    console.log('Using mock data instead');
                 }
             },
         },

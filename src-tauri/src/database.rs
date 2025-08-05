@@ -21,6 +21,21 @@ pub struct Transaction {
     pub memo: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Account {
+    pub id: i64,
+    pub name: String,
+    pub account_type: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub current_balance: Option<f64>,
+    pub institution: Option<String>,
+    pub display_order: Option<i32>,
+    pub archived: bool,
+    pub include_in_net_worth: bool,
+    pub account_number_last4: Option<String>,
+}
+
 pub async fn create_connection() -> Result<Pool<Sqlite>, sqlx::Error> {
     let db_path = "./tally.db";
 
@@ -147,17 +162,56 @@ pub async fn get_account_by_id(
     Ok(result)
 }
 
-pub async fn get_all_accounts(
+/// Retrieves all non-archived accounts from the database.
+/// 
+/// Returns a vector of Account structs with all fields populated, including
+/// currency conversion from integer cents to floating-point dollars for the balance.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(Vec<Account>)` - Vector of Account structs with all database fields
+/// - `Err(sqlx::Error)` - Database query or connection error
+/// 
+/// # Ordering
+/// 
+/// Results are ordered by `display_order` first, then by `name` alphabetically.
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// let accounts = get_accounts(&pool).await?;
+/// for account in accounts {
+///     println!("{}: ${:.2}", account.name, account.current_balance.unwrap_or(0.0));
+/// }
+/// ```
+pub async fn get_accounts(
     pool: &Pool<Sqlite>,
-) -> Result<Vec<(i64, String, String, Option<f64>)>, sqlx::Error> {
-    let accounts = sqlx::query_as::<_, (i64, String, String, Option<i64>)>(
-       "SELECT id, name, type, current_balance FROM accounts WHERE archived = FALSE ORDER BY display_order, name",
+) -> Result<Vec<Account>, sqlx::Error> {
+    let accounts = sqlx::query_as::<_, (i64, String, String, String, String, Option<i64>, Option<String>, Option<i32>, bool, bool, Option<String>)>(
+       "SELECT id, name, type, created_at, updated_at, current_balance, institution, display_order, archived, include_in_net_worth, account_number_last4 FROM accounts WHERE archived = FALSE ORDER BY display_order, name",
    ).fetch_all(pool).await?;
 
     let result = accounts
         .into_iter()
-        .map(|(id, name, type_, balance_cents)| {
-            (id, name, type_, cents_to_dollars_option(balance_cents))
+        .map(|(id, name, account_type, created_at, updated_at, balance_cents, institution, display_order, archived, include_in_net_worth, account_number_last4)| {
+            Account {
+                id,
+                name,
+                account_type,
+                created_at,
+                updated_at, 
+                current_balance: cents_to_dollars_option(balance_cents),
+                institution,
+                display_order,
+                archived,
+                include_in_net_worth,
+                account_number_last4,
+            }
         })
         .collect();
 

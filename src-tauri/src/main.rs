@@ -77,11 +77,10 @@ async fn initialize_database() -> Result<sqlx::SqlitePool, sqlx::Error> {
 #[tauri::command]
 async fn get_accounts(
     pool: tauri::State<'_, sqlx::SqlitePool>,
-) -> Result<Vec<(i64, String, String, Option<f64>)>, String> {
-    match database::get_all_accounts(&pool).await {
-        Ok(accounts) => Ok(accounts),
-        Err(e) => Err(format!("Failed to get accounts: {}", e)),
-    }
+) -> Result<Vec<database::Account>, String> {
+    database::get_accounts(&pool)
+        .await
+        .map_err(|e| format!("Failed to get accounts: {}", e))
 }
 
 #[tauri::command]
