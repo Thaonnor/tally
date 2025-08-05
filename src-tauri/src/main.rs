@@ -3,9 +3,27 @@
 
 mod database;
 
+/// Entry point for the Tally personal finance application.
+/// 
+/// Initializes the SQLite database connection, creates required tables,
+/// and starts the Tauri desktop application with registered command handlers.
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(())` on successful application startup, or an error if:
+/// - Database initialization fails
+/// - Tauri application fails to start
+/// 
+/// # Errors
+/// 
+/// This function will return an error if:
+/// - SQLite database cannot be created or connected to
+/// - Required database tables cannot be created
+/// - Tauri runtime fails to initialize
+/// - Application configuration is invalid
 #[tokio::main]
-async fn main() {
-    let pool = initialize_database().await;
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = initialize_database().await?;
 
     tauri::Builder::default()
         .manage(pool)
@@ -16,29 +34,44 @@ async fn main() {
             add_transaction,
             get_transactions
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .run(tauri::generate_context!())?;
+        
+    Ok(())
 }
 
-async fn initialize_database() -> sqlx::SqlitePool {
-    let pool = database::create_connection()
-        .await
-        .expect("Failed to create database connection.");
+/// Initializes the SQLite database connection and creates all required tables.
+/// 
+/// Creates a connection pool to the SQLite database file (`tally.db`) and ensures
+/// all necessary tables exist for the application to function properly.
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(SqlitePool)` - A connection pool ready for database operations
+/// - `Err(sqlx::Error)` - Database connection or table creation error
+/// 
+/// # Errors
+/// 
+/// This function will return an error if:
+/// - Database file cannot be created or accessed
+/// - SQLite connection cannot be established
+/// - Any required table creation fails (accounts, transactions, categories, transfers)
+/// 
+/// # Tables Created
+/// 
+/// - `accounts` - User financial accounts
+/// - `transactions` - Financial transactions
+/// - `categories` - Transaction categories
+/// - `transfers` - Money transfers between accounts
+async fn initialize_database() -> Result<sqlx::SqlitePool, sqlx::Error> {
+    let pool = database::create_connection().await?;
 
-    database::create_accounts_table(&pool)
-        .await
-        .expect("Failed to create accounts table.");
-    database::create_transactions_table(&pool)
-        .await
-        .expect("Failed to create transactions table.");
-    database::create_categories_table(&pool)
-        .await
-        .expect("Failed to create categories table.");
-    database::create_transfers_table(&pool)
-        .await
-        .expect("Failed to create transfers table.");
+    database::create_accounts_table(&pool).await?;
+    database::create_transactions_table(&pool).await?;
+    database::create_categories_table(&pool).await?;
+    database::create_transfers_table(&pool).await?;
 
-    pool
+    Ok(pool)
 }
 
 #[tauri::command]
