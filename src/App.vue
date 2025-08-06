@@ -1,9 +1,9 @@
 <template>
     <div class="flex h-screen">
-        <Sidebar />
+        <Sidebar ref="sidebar" />
 
         <!-- Router content will show here -->
-        <router-view />
+        <router-view @account-archived="handleAccountArchived" />
     </div>
 </template>
 
@@ -13,6 +13,14 @@
         name: 'App',
         components: {
             Sidebar,
+        },
+        methods: {
+            handleAccountArchived() {
+                // Refresh sidebar accounts when an account is archived
+                if (this.$refs.sidebar) {
+                    this.$refs.sidebar.refreshAccounts();
+                }
+            },
         },
     };
 </script>

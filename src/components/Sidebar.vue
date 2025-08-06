@@ -16,6 +16,14 @@
                 </li>
                 <li>
                     <router-link
+                        to="/accounts"
+                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50"
+                        active-class="bg-gray-600 text-gray-50"
+                        >Accounts</router-link
+                    >
+                </li>
+                <li>
+                    <router-link
                         to="/reports"
                         class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50"
                         active-class="bg-gray-600 text-gray-50"
@@ -34,18 +42,12 @@
         </nav>
 
         <div class="flex-1 py-4">
-            <div class="flex justify-between items-center px-5 pb-3">
+            <div class="px-5 pb-3">
                 <h3
                     class="text-sm font-semibold text-gray-400 uppercase tracking-wide"
                 >
                     Accounts
                 </h3>
-                <button
-                    @click="showAddModal = true"
-                    class="bg-indigo-500 text-white border-none rounded w-6 h-6 cursor-pointer"
-                >
-                    +
-                </button>
             </div>
             <ul class="list-none">
                 <AccountItem
@@ -58,35 +60,18 @@
             </ul>
         </div>
     </div>
-
-    <Modal
-        :isOpen="showAddModal"
-        title="Add Account"
-        @close="showAddModal = false"
-    >
-        <AccountForm
-            mode="create"
-            @submit="handleAddAccount"
-            @cancel="showAddModal = false"
-        />
-    </Modal>
 </template>
 
 <script>
     import AccountItem from './AccountItem.vue';
-    import Modal from './Modal.vue';
-    import AccountForm from './AccountForm.vue';
     import { invoke } from '@tauri-apps/api/core';
     export default {
         name: 'Sidebar',
         components: {
             AccountItem,
-            Modal,
-            AccountForm,
         },
         data() {
             return {
-                showAddModal: false,
                 accounts: [],
             };
         },
@@ -94,30 +79,6 @@
             await this.loadAccounts();
         },
         methods: {
-            async handleAddAccount(accountData) {
-                try {
-                    console.log('Adding account:', accountData);
-
-                    const accountId = await invoke('add_account', {
-                        name: accountData.name,
-                        accountType: accountData.type,
-                        institution: accountData.institution || null,
-                        currentBalance: accountData.currentBalance || null,
-                    });
-
-                    console.log('Account added with ID:', accountId);
-
-                    // Refresh the account list
-                    await this.loadAccounts();
-
-                    // Close the modal
-                    this.showAddModal = false;
-                } catch (error) {
-                    console.error('Failed to add account:', error);
-                    // For now, just close modal on error
-                    this.showAddModal = false;
-                }
-            },
             async loadAccounts() {
                 try {
                     this.accounts = await invoke('get_accounts');
@@ -154,6 +115,10 @@
                         }
                     ];
                 }
+            },
+            async refreshAccounts() {
+                // Public method that can be called from parent components
+                await this.loadAccounts();
             },
         },
     };

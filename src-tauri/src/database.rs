@@ -36,6 +36,17 @@ pub struct Account {
     pub account_number_last4: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateAccountRequest {
+    pub name: String,
+    pub account_type: String,
+    pub institution: Option<String>,
+    pub current_balance: Option<f64>,
+    pub display_order: Option<i32>,
+    pub include_in_net_worth: Option<bool>,
+    pub account_number_last4: Option<String>,
+}
+
 pub async fn create_connection() -> Result<Pool<Sqlite>, sqlx::Error> {
     let db_path = "./tally.db";
 
@@ -218,20 +229,60 @@ pub async fn get_accounts(
     Ok(result)
 }
 
+/// Inserts a new account into the database with all user-provided fields.
+/// 
+/// Creates a new account record with automatic timestamp generation and default values
+/// for system-managed fields. Currency amounts are automatically converted from dollars
+/// to integer cents for precise storage.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// * `request` - Account creation request containing all user-settable fields
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(i64)` - The auto-generated ID of the newly inserted account
+/// - `Err(sqlx::Error)` - Database operation error (constraint violations, connection issues, etc.)
+/// 
+/// # Database Behavior
+/// 
+/// - `created_at` and `updated_at` are set to CURRENT_TIMESTAMP automatically
+/// - `archived` defaults to FALSE for new accounts
+/// - `include_in_net_worth` defaults to TRUE if not specified in request
+/// - `current_balance` is converted from dollars to cents before storage
+/// - Returns the `last_insert_rowid()` as the new account ID
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// let request = CreateAccountRequest {
+///     name: "Checking Account".to_string(),
+///     account_type: "checking".to_string(),
+///     institution: Some("Bank of America".to_string()),
+///     current_balance: Some(1000.50),
+///     display_order: Some(1),
+///     include_in_net_worth: Some(true),
+///     account_number_last4: Some("1234".to_string()),
+/// };
+/// let account_id = insert_account(&pool, &request).await?;
+/// ```
 pub async fn insert_account(
     pool: &Pool<Sqlite>,
-    name: &str,
-    account_type: &str,
-    institution: Option<&str>,
-    current_balance: Option<f64>,
+    request: &CreateAccountRequest,
 ) -> Result<i64, sqlx::Error> {
     let result = sqlx::query(
-        "INSERT INTO accounts (name, type, institution, current_balance) VALUES (?, ?, ?, ?)",
+        r#"INSERT INTO accounts (name, type, institution, current_balance, display_order, include_in_net_worth, account_number_last4) 
+           VALUES (?, ?, ?, ?, ?, ?, ?)"#,
     )
-    .bind(name)
-    .bind(account_type)
-    .bind(institution)
-    .bind(dollars_to_cents_option(current_balance))
+    .bind(&request.name)
+    .bind(&request.account_type)
+    .bind(&request.institution)
+    .bind(dollars_to_cents_option(request.current_balance))
+    .bind(request.display_order)
+    .bind(request.include_in_net_worth.unwrap_or(true))
+    .bind(&request.account_number_last4)
     .execute(pool)
     .await?;
 
@@ -265,6 +316,48 @@ pub async fn set_account_balance(
         "UPDATE accounts SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
     )
     .bind(balance_cents)
+    .bind(account_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Archives an account by setting its archived flag to true.
+/// 
+/// Soft deletes an account by marking it as archived, which will hide it from
+/// the standard account listings while preserving all data and transaction history.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// * `account_id` - The ID of the account to archive
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(())` - Account successfully archived
+/// - `Err(sqlx::Error)` - Database operation error or account not found
+/// 
+/// # Database Behavior
+/// 
+/// - Sets `archived = TRUE` for the specified account
+/// - Updates `updated_at` timestamp automatically
+/// - Account will no longer appear in `get_accounts()` results
+/// - All associated transactions remain intact
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// archive_account(&pool, 123).await?;
+/// ```
+pub async fn archive_account(
+    pool: &Pool<Sqlite>,
+    account_id: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE accounts SET archived = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND archived = FALSE",
+    )
     .bind(account_id)
     .execute(pool)
     .await?;
