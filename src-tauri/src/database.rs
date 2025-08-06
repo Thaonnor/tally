@@ -289,6 +289,72 @@ pub async fn insert_account(
     Ok(result.last_insert_rowid())
 }
 
+/// Updates an existing account with new information.
+/// 
+/// Modifies an existing account record with the provided data while preserving
+/// system-managed fields like timestamps and ID. Currency amounts are automatically
+/// converted from dollars to integer cents for precise storage.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// * `account_id` - The ID of the account to update
+/// * `request` - Account update request containing new field values
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(())` - Account successfully updated
+/// - `Err(sqlx::Error)` - Database operation error (constraint violations, connection issues, account not found, etc.)
+/// 
+/// # Database Behavior
+/// 
+/// - Updates all user-settable fields with new values
+/// - `updated_at` is set to CURRENT_TIMESTAMP automatically
+/// - Only updates non-archived accounts (`WHERE archived = FALSE`)
+/// - Currency amounts are converted from dollars to cents before storage
+/// - Preserves `id`, `created_at`, and `archived` fields
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// let request = CreateAccountRequest {
+///     name: "Updated Account Name".to_string(),
+///     account_type: "savings".to_string(),
+///     institution: Some("New Bank".to_string()),
+///     current_balance: Some(2000.75),
+///     display_order: Some(3),
+///     include_in_net_worth: Some(false),
+///     account_number_last4: Some("9876".to_string()),
+/// };
+/// update_account(&pool, 123, &request).await?;
+/// ```
+pub async fn update_account(
+    pool: &Pool<Sqlite>,
+    account_id: i64,
+    request: &CreateAccountRequest,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"UPDATE accounts 
+           SET name = ?, type = ?, institution = ?, current_balance = ?, 
+               display_order = ?, include_in_net_worth = ?, account_number_last4 = ?,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND archived = FALSE"#,
+    )
+    .bind(&request.name)
+    .bind(&request.account_type)
+    .bind(&request.institution)
+    .bind(dollars_to_cents_option(request.current_balance))
+    .bind(request.display_order)
+    .bind(request.include_in_net_worth.unwrap_or(true))
+    .bind(&request.account_number_last4)
+    .bind(account_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 // Get balance for a specific account (returns dollars)
 pub async fn get_account_balance(
     pool: &Pool<Sqlite>,

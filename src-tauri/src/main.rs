@@ -31,6 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_accounts,
             add_account,
             get_account_by_id,
+            update_account,
             archive_account,
             add_transaction,
             get_transactions
@@ -170,6 +171,53 @@ async fn get_account_by_id(
     database::get_account_by_id(&state, id)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// Updates an existing account with new information.
+/// 
+/// This Tauri command modifies an existing account record with the provided data
+/// while preserving system-managed fields. Only non-archived accounts can be updated.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - Tauri-managed SQLite connection pool state
+/// * `account_id` - The ID of the account to update
+/// * `request` - Account update data including name, type, and optional fields
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(())` - Account successfully updated
+/// - `Err(String)` - Formatted error message if database operation fails
+/// 
+/// # Request Fields
+/// 
+/// Same as account creation: name, account_type, institution, current_balance,
+/// display_order, include_in_net_worth, account_number_last4
+/// 
+/// # Frontend Usage
+/// 
+/// ```javascript
+/// const request = {
+///   name: "Updated Account Name",
+///   account_type: "savings",
+///   institution: "New Bank",
+///   current_balance: 2000.50,
+///   display_order: 1,
+///   include_in_net_worth: true,
+///   account_number_last4: "9876"
+/// };
+/// await invoke('update_account', { accountId: 123, request });
+/// ```
+#[tauri::command]
+async fn update_account(
+    pool: tauri::State<'_, sqlx::SqlitePool>,
+    account_id: i64,
+    request: database::CreateAccountRequest,
+) -> Result<(), String> {
+    database::update_account(&pool, account_id, &request)
+        .await
+        .map_err(|e| format!("Failed to update account: {}", e))
 }
 
 /// Archives (soft deletes) an account by marking it as archived.

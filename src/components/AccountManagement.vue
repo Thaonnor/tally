@@ -266,11 +266,32 @@ export default {
         },
         async handleEditAccount(accountData) {
             try {
-                console.log('Editing account:', accountData);
-                // TODO: Implement edit functionality when backend is ready
+                console.log('Updating account:', this.selectedAccount.id, accountData);
+
+                const request = {
+                    name: accountData.name,
+                    account_type: accountData.type,
+                    institution: accountData.institution || null,
+                    current_balance: accountData.currentBalance || null,
+                    display_order: accountData.displayOrder || null,
+                    include_in_net_worth: accountData.includeInNetWorth ?? null,
+                    account_number_last4: accountData.accountNumberLast4 || null,
+                };
+
+                await invoke('update_account', { 
+                    accountId: this.selectedAccount.id, 
+                    request 
+                });
+
+                console.log('Account updated successfully');
+
+                // Close modal and refresh data
                 this.showEditModal = false;
+                await this.loadAccounts(); // Refresh account list
+                this.$emit('account-updated'); // Notify parent to refresh sidebar
             } catch (error) {
-                console.error('Failed to edit account:', error);
+                console.error('Failed to update account:', error);
+                // TODO: Show error message to user in modal
             }
         },
         viewAccount(accountId) {

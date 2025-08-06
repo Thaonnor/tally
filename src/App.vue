@@ -3,7 +3,7 @@
         <Sidebar ref="sidebar" />
 
         <!-- Router content will show here -->
-        <router-view @account-archived="handleAccountArchived" />
+        <router-view @account-archived="handleAccountArchived" @account-updated="handleAccountUpdated" />
     </div>
 </template>
 
@@ -17,6 +17,12 @@
         methods: {
             handleAccountArchived() {
                 // Refresh sidebar accounts when an account is archived
+                if (this.$refs.sidebar) {
+                    this.$refs.sidebar.refreshAccounts();
+                }
+            },
+            handleAccountUpdated() {
+                // Refresh sidebar accounts when an account is updated
                 if (this.$refs.sidebar) {
                     this.$refs.sidebar.refreshAccounts();
                 }
