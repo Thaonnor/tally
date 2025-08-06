@@ -164,17 +164,23 @@
         methods: {
             async loadAccount() {
                 try {
-                    const accountData = await invoke('get_account_by_id', {
+                    const accountData = await invoke('get_account', {
                         id: parseInt(this.id),
                     });
 
                     if (accountData) {
                         this.account = {
-                            id: accountData[0],
-                            name: accountData[1],
-                            type: accountData[2],
-                            current_balance: accountData[3] || 0,
-                            updated_at: new Date(),
+                            id: accountData.id,
+                            name: accountData.name,
+                            type: accountData.account_type,
+                            current_balance: accountData.current_balance || 0,
+                            institution: accountData.institution,
+                            display_order: accountData.display_order,
+                            include_in_net_worth: accountData.include_in_net_worth,
+                            account_number_last4: accountData.account_number_last4,
+                            created_at: accountData.created_at,
+                            updated_at: accountData.updated_at,
+                            archived: accountData.archived,
                         };
                     }
                 } catch (error) {

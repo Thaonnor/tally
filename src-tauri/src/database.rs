@@ -61,6 +61,26 @@ pub async fn create_connection() -> Result<Pool<Sqlite>, sqlx::Error> {
     Ok(pool)
 }
 
+/// Creates the accounts table if it doesn't already exist.
+/// 
+/// Initializes the accounts table schema with all necessary columns including
+/// account metadata, balance tracking, and soft delete support.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(())` - Table created or already exists
+/// - `Err(sqlx::Error)` - Database schema creation error
+/// 
+/// # Database Schema
+/// 
+/// Creates table with columns: id, name, type, created_at, updated_at,
+/// current_balance (in cents), institution, display_order, archived,
+/// include_in_net_worth, account_number_last4
 pub async fn create_accounts_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
@@ -155,19 +175,58 @@ pub async fn create_transfers_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Err
     Ok(())
 }
 
-pub async fn get_account_by_id(
+/// Retrieves a specific account by its ID.
+/// 
+/// Fetches complete account information for a single non-archived account,
+/// returning the same full Account struct as get_accounts() for consistency.
+/// Currency amounts are automatically converted from cents to dollars.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// * `id` - The unique ID of the account to retrieve
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(Some(Account))` - Complete account information
+/// - `Ok(None)` - No account found with given ID (or account is archived)
+/// - `Err(sqlx::Error)` - Database query error
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// let account = get_account(&pool, 123).await?;
+/// if let Some(account) = account {
+///     println!("Found account: {} ({})", account.name, account.account_type);
+///     println!("Balance: ${:.2}", account.current_balance.unwrap_or(0.0));
+/// }
+/// ```
+pub async fn get_account(
     pool: &Pool<Sqlite>,
     id: i64,
-) -> Result<Option<(i64, String, String, Option<f64>)>, sqlx::Error> {
-    let account = sqlx::query_as::<_, (i64, String, String, Option<i64>)>(
-        "SELECT id, name, type, current_balance FROM accounts WHERE id = ? AND archived = FALSE",
+) -> Result<Option<Account>, sqlx::Error> {
+    let account = sqlx::query_as::<_, (i64, String, String, String, String, Option<i64>, Option<String>, Option<i32>, bool, bool, Option<String>)>(
+        "SELECT id, name, type, created_at, updated_at, current_balance, institution, display_order, archived, include_in_net_worth, account_number_last4 FROM accounts WHERE id = ? AND archived = FALSE",
     )
     .bind(id)
     .fetch_optional(pool)
     .await?;
 
-    let result = account.map(|(id, name, type_, balance_cents)| {
-        (id, name, type_, cents_to_dollars_option(balance_cents))
+    let result = account.map(|(id, name, account_type, created_at, updated_at, balance_cents, institution, display_order, archived, include_in_net_worth, account_number_last4)| {
+        Account {
+            id,
+            name,
+            account_type,
+            created_at,
+            updated_at,
+            current_balance: cents_to_dollars_option(balance_cents),
+            institution,
+            display_order,
+            archived,
+            include_in_net_worth,
+            account_number_last4,
+        }
     });
 
     Ok(result)
@@ -348,40 +407,6 @@ pub async fn update_account(
     .bind(request.display_order)
     .bind(request.include_in_net_worth.unwrap_or(true))
     .bind(&request.account_number_last4)
-    .bind(account_id)
-    .execute(pool)
-    .await?;
-
-    Ok(())
-}
-
-// Get balance for a specific account (returns dollars)
-pub async fn get_account_balance(
-    pool: &Pool<Sqlite>,
-    account_id: i64,
-) -> Result<Option<f64>, sqlx::Error> {
-    let balance_cents = sqlx::query_scalar::<_, Option<i64>>(
-        "SELECT current_balance FROM accounts WHERE id = ? AND archived = FALSE",
-    )
-    .bind(account_id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(balance_cents.flatten().map(|cents| cents as f64 / 100.0))
-}
-
-// Set balance for a specific account (accepts dollars)
-pub async fn set_account_balance(
-    pool: &Pool<Sqlite>,
-    account_id: i64,
-    balance_dollars: f64,
-) -> Result<(), sqlx::Error> {
-    let balance_cents = (balance_dollars * 100.0).round() as i64;
-
-    sqlx::query(
-        "UPDATE accounts SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-    )
-    .bind(balance_cents)
     .bind(account_id)
     .execute(pool)
     .await?;

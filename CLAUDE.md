@@ -52,7 +52,7 @@ This is a Tauri-based personal finance tracking application with a Vue.js fronte
 **Available Tauri Commands:**
 - `get_accounts()` - Retrieve all non-archived accounts
 - `add_account(name, account_type, institution?, current_balance?)` - Create new account
-- `get_account_by_id(id)` - Get specific account details
+- `get_account(id)` - Get specific account details
 - `add_transaction(account_id, date, amount, description?, payee?, memo?, category_id?, pending, cleared)` - Create transaction
 - `get_transactions(account_id, limit, offset)` - Get paginated account transactions
 

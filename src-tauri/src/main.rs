@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .invoke_handler(tauri::generate_handler![
             get_accounts,
             add_account,
-            get_account_by_id,
+            get_account,
             update_account,
             archive_account,
             add_transaction,
@@ -163,12 +163,40 @@ async fn add_account(
     }
 }
 
+/// Retrieves a specific account by its unique ID.
+/// 
+/// This Tauri command fetches complete account information for a single account,
+/// returning the same full Account struct as get_accounts() for consistency.
+/// Only returns data for non-archived accounts.
+/// 
+/// # Arguments
+/// 
+/// * `id` - The unique ID of the account to retrieve
+/// * `state` - Tauri-managed SQLite connection pool state
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(Some(Account))` - Complete account information including all fields
+/// - `Ok(None)` - No account found with the given ID (or account is archived)
+/// - `Err(String)` - Formatted error message if database operation fails
+/// 
+/// # Frontend Usage
+/// 
+/// ```javascript
+/// const account = await invoke('get_account', { id: 123 });
+/// if (account) {
+///   console.log(`Found: ${account.name} (${account.account_type})`);
+///   console.log(`Balance: $${account.current_balance || 0}`);
+///   console.log(`Institution: ${account.institution || 'N/A'}`);
+/// }
+/// ```
 #[tauri::command]
-async fn get_account_by_id(
+async fn get_account(
     id: i64,
     state: tauri::State<'_, sqlx::SqlitePool>,
-) -> Result<Option<(i64, String, String, Option<f64>)>, String> {
-    database::get_account_by_id(&state, id)
+) -> Result<Option<database::Account>, String> {
+    database::get_account(&state, id)
         .await
         .map_err(|e| e.to_string())
 }
