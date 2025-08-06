@@ -37,6 +37,29 @@ pub struct Account {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Category {
+    pub id: i64,
+    pub name: String,
+    pub archived: bool,
+    pub created_at: String,
+    pub display_order: Option<i32>,
+    pub parent_category_id: Option<i64>,
+    pub default_discretionary: Option<bool>,
+    pub default_fixed: Option<bool>,
+    pub last_used_date: Option<String>,
+    pub is_system_category: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateCategoryRequest {
+    pub name: String,
+    pub display_order: Option<i32>,
+    pub parent_category_id: Option<i64>,
+    pub default_discretionary: Option<bool>,
+    pub default_fixed: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateAccountRequest {
     pub name: String,
     pub account_type: String,
@@ -146,12 +169,48 @@ pub async fn create_categories_table(pool: &Pool<Sqlite>) -> Result<(), sqlx::Er
             parent_category_id INTEGER REFERENCES categories(id),
             default_discretionary BOOLEAN,
             default_fixed BOOLEAN,
-            last_used_date DATETIME
+            last_used_date DATETIME,
+            is_system_category BOOLEAN DEFAULT FALSE
         )
         "#,
     )
     .execute(pool)
     .await?;
+
+    Ok(())
+}
+
+/// Seeds the default "Uncategorized" system category if it doesn't exist.
+/// 
+/// Creates the system category that serves as a fallback for transactions
+/// without explicit categorization. This category cannot be deleted or archived
+/// by users, ensuring data integrity.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(())` - System category seeded or already exists
+/// - `Err(sqlx::Error)` - Database operation error
+pub async fn seed_default_categories(pool: &Pool<Sqlite>) -> Result<(), sqlx::Error> {
+    // Check if Uncategorized category already exists
+    let existing = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM categories WHERE name = 'Uncategorized' AND is_system_category = TRUE"
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if existing == 0 {
+        sqlx::query(
+            r#"INSERT INTO categories (name, is_system_category, display_order, archived) 
+               VALUES ('Uncategorized', TRUE, 0, FALSE)"#
+        )
+        .execute(pool)
+        .await?;
+    }
 
     Ok(())
 }
@@ -346,6 +405,278 @@ pub async fn insert_account(
     .await?;
 
     Ok(result.last_insert_rowid())
+}
+
+/// Inserts a new category into the database.
+/// 
+/// Creates a new category record with automatic timestamp generation and default values
+/// for system-managed fields. User categories are created with is_system_category = FALSE.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// * `request` - Category creation request containing all user-settable fields
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(i64)` - The auto-generated ID of the newly inserted category
+/// - `Err(sqlx::Error)` - Database operation error (constraint violations, connection issues, etc.)
+/// 
+/// # Database Behavior
+/// 
+/// - `created_at` is set to CURRENT_TIMESTAMP automatically
+/// - `archived` defaults to FALSE for new categories
+/// - `is_system_category` defaults to FALSE for user-created categories
+/// - Returns the `last_insert_rowid()` as the new category ID
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// let request = CreateCategoryRequest {
+///     name: "Groceries".to_string(),
+///     display_order: Some(10),
+///     parent_category_id: Some(1), // Food category
+///     default_discretionary: Some(true),
+///     default_fixed: Some(false),
+/// };
+/// let category_id = insert_category(&pool, &request).await?;
+/// ```
+pub async fn insert_category(
+    pool: &Pool<Sqlite>,
+    request: &CreateCategoryRequest,
+) -> Result<i64, sqlx::Error> {
+    let result = sqlx::query(
+        r#"INSERT INTO categories (name, display_order, parent_category_id, default_discretionary, default_fixed) 
+           VALUES (?, ?, ?, ?, ?)"#,
+    )
+    .bind(&request.name)
+    .bind(request.display_order)
+    .bind(request.parent_category_id)
+    .bind(request.default_discretionary)
+    .bind(request.default_fixed)
+    .execute(pool)
+    .await?;
+
+    Ok(result.last_insert_rowid())
+}
+
+/// Retrieves all non-archived categories from the database.
+/// 
+/// Returns a vector of Category structs with all fields populated, ordered by
+/// display_order first, then alphabetically by name for consistent listing.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(Vec<Category>)` - Vector of Category structs with all database fields
+/// - `Err(sqlx::Error)` - Database query or connection error
+/// 
+/// # Ordering
+/// 
+/// Results are ordered by `display_order` first (NULL values last), then by `name` alphabetically.
+/// This ensures system categories and user-ordered categories appear in logical order.
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// let categories = get_categories(&pool).await?;
+/// for category in categories {
+///     println!("{}: {}", category.id, category.name);
+///     if category.is_system_category {
+///         println!("  (System category - cannot be deleted)");
+///     }
+/// }
+/// ```
+pub async fn get_categories(
+    pool: &Pool<Sqlite>,
+) -> Result<Vec<Category>, sqlx::Error> {
+    let categories = sqlx::query_as::<_, (i64, String, bool, String, Option<i32>, Option<i64>, Option<bool>, Option<bool>, Option<String>, bool)>(
+        "SELECT id, name, archived, created_at, display_order, parent_category_id, default_discretionary, default_fixed, last_used_date, is_system_category FROM categories WHERE archived = FALSE ORDER BY display_order, name",
+    ).fetch_all(pool).await?;
+
+    let result = categories
+        .into_iter()
+        .map(|(id, name, archived, created_at, display_order, parent_category_id, default_discretionary, default_fixed, last_used_date, is_system_category)| {
+            Category {
+                id,
+                name,
+                archived,
+                created_at,
+                display_order,
+                parent_category_id,
+                default_discretionary,
+                default_fixed,
+                last_used_date,
+                is_system_category,
+            }
+        })
+        .collect();
+
+    Ok(result)
+}
+
+/// Retrieves a specific category by its ID.
+/// 
+/// Fetches complete category information for a single non-archived category,
+/// returning the same full Category struct as get_categories() for consistency.
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// * `id` - The unique ID of the category to retrieve
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(Some(Category))` - Complete category information
+/// - `Ok(None)` - No category found with given ID (or category is archived)
+/// - `Err(sqlx::Error)` - Database query error
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// let category = get_category(&pool, 123).await?;
+/// if let Some(category) = category {
+///     println!("Found category: {}", category.name);
+///     if category.is_system_category {
+///         println!("This is a system category");
+///     }
+/// }
+/// ```
+pub async fn get_category(
+    pool: &Pool<Sqlite>,
+    id: i64,
+) -> Result<Option<Category>, sqlx::Error> {
+    let category = sqlx::query_as::<_, (i64, String, bool, String, Option<i32>, Option<i64>, Option<bool>, Option<bool>, Option<String>, bool)>(
+        "SELECT id, name, archived, created_at, display_order, parent_category_id, default_discretionary, default_fixed, last_used_date, is_system_category FROM categories WHERE id = ? AND archived = FALSE",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?;
+
+    let result = category.map(|(id, name, archived, created_at, display_order, parent_category_id, default_discretionary, default_fixed, last_used_date, is_system_category)| {
+        Category {
+            id,
+            name,
+            archived,
+            created_at,
+            display_order,
+            parent_category_id,
+            default_discretionary,
+            default_fixed,
+            last_used_date,
+            is_system_category,
+        }
+    });
+
+    Ok(result)
+}
+
+/// Updates an existing category with new information.
+/// 
+/// Modifies an existing category record with the provided data while preserving
+/// system-managed fields like timestamps and ID. System categories cannot be updated
+/// to prevent accidental modification of critical categories like "Uncategorized".
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// * `category_id` - The ID of the category to update
+/// * `request` - Category update request containing new field values
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(())` - Category successfully updated
+/// - `Err(sqlx::Error)` - Database operation error (constraint violations, connection issues, category not found, etc.)
+/// 
+/// # Database Behavior
+/// 
+/// - Updates all user-settable fields with new values
+/// - Only updates non-archived, non-system categories (`WHERE archived = FALSE AND is_system_category = FALSE`)
+/// - Preserves `id`, `created_at`, `archived`, and `is_system_category` fields
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// let request = CreateCategoryRequest {
+///     name: "Updated Category Name".to_string(),
+///     display_order: Some(5),
+///     parent_category_id: Some(2),
+///     default_discretionary: Some(false),
+///     default_fixed: Some(true),
+/// };
+/// update_category(&pool, 123, &request).await?;
+/// ```
+pub async fn update_category(
+    pool: &Pool<Sqlite>,
+    category_id: i64,
+    request: &CreateCategoryRequest,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"UPDATE categories 
+           SET name = ?, display_order = ?, parent_category_id = ?, 
+               default_discretionary = ?, default_fixed = ?
+           WHERE id = ? AND archived = FALSE AND is_system_category = FALSE"#,
+    )
+    .bind(&request.name)
+    .bind(request.display_order)
+    .bind(request.parent_category_id)
+    .bind(request.default_discretionary)
+    .bind(request.default_fixed)
+    .bind(category_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+/// Archives a category by setting its archived flag to true.
+/// 
+/// Soft deletes a category by marking it as archived, which will hide it from
+/// standard category listings while preserving all data and transaction history.
+/// System categories cannot be archived to protect critical categories like "Uncategorized".
+/// 
+/// # Arguments
+/// 
+/// * `pool` - SQLite connection pool reference
+/// * `category_id` - The ID of the category to archive
+/// 
+/// # Returns
+/// 
+/// Returns a `Result` containing:
+/// - `Ok(())` - Category successfully archived
+/// - `Err(sqlx::Error)` - Database operation error or category not found/is system category
+/// 
+/// # Database Behavior
+/// 
+/// - Sets `archived = TRUE` for the specified category
+/// - Only archives non-system categories (`WHERE is_system_category = FALSE`)
+/// - Category will no longer appear in `get_categories()` results
+/// - All associated transactions remain intact but may show "Uncategorized" in UI
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// archive_category(&pool, 123).await?;
+/// ```
+pub async fn archive_category(
+    pool: &Pool<Sqlite>,
+    category_id: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE categories SET archived = TRUE WHERE id = ? AND archived = FALSE AND is_system_category = FALSE",
+    )
+    .bind(category_id)
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }
 
 /// Updates an existing account with new information.
