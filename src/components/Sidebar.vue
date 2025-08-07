@@ -24,6 +24,14 @@
                 </li>
                 <li>
                     <router-link
+                        to="/categories"
+                        class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50"
+                        active-class="bg-gray-600 text-gray-50"
+                        >Categories</router-link
+                    >
+                </li>
+                <li>
+                    <router-link
                         to="/reports"
                         class="block px-5 py-3 text-gray-300 no-underline transition-colors hover:bg-gray-600 hover:text-gray-50"
                         active-class="bg-gray-600 text-gray-50"

@@ -253,6 +253,9 @@ export default {
                 // Refresh the account list
                 await this.loadAccounts();
 
+                // Notify parent to refresh sidebar
+                this.$emit('account-updated');
+
                 // Close the modal
                 this.showAddModal = false;
             } catch (error) {

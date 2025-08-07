@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Dashboard from '../components/Dashboard.vue';
 import AccountDetail from '../components/AccountDetail.vue';
 import AccountManagement from '../components/AccountManagement.vue';
+import CategoryManagement from '../components/CategoryManagement.vue';
 
 const routes = [
     {
@@ -13,6 +14,11 @@ const routes = [
         path: '/accounts',
         name: 'AccountManagement',
         component: AccountManagement,
+    },
+    {
+        path: '/categories',
+        name: 'CategoryManagement',
+        component: CategoryManagement,
     },
     {
         path: '/account/:id',

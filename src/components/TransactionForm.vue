@@ -64,8 +64,13 @@
                 class="w-full p-3 pr-10 border border-gray-600 rounded bg-gray-900 text-gray-50 focus:outline-none focus:border-indigo-500 appearance-none"
             >
                 <option :value="null">Uncategorized</option>
-                <option :value="1">Gas</option>
-                <option :value="2">Dining Out</option>
+                <option 
+                    v-for="category in nonSystemCategories" 
+                    :key="category.id" 
+                    :value="category.id"
+                >
+                    {{ formatCategoryName(category) }}
+                </option>
             </select>
         </div>
 
@@ -144,9 +149,42 @@
                     pending: false,
                     cleared: false,
                 },
+                categories: [],
+                categoriesLoading: true,
             };
         },
+        async mounted() {
+            await this.loadCategories();
+        },
+        computed: {
+            nonSystemCategories() {
+                // Filter out system categories since we show "Uncategorized" separately
+                return this.categories.filter(category => !category.is_system_category);
+            }
+        },
         methods: {
+            async loadCategories() {
+                try {
+                    this.categoriesLoading = true;
+                    this.categories = await invoke('get_categories');
+                    console.log('Loaded categories for transaction form:', this.categories);
+                } catch (error) {
+                    console.error('Failed to load categories:', error);
+                    this.categories = [];
+                } finally {
+                    this.categoriesLoading = false;
+                }
+            },
+            formatCategoryName(category) {
+                // If category has a parent, show it as "Parent > Child"
+                if (category.parent_category_id) {
+                    const parent = this.categories.find(cat => cat.id === category.parent_category_id);
+                    if (parent) {
+                        return `${parent.name} > ${category.name}`;
+                    }
+                }
+                return category.name;
+            },
             async handleSubmit() {
                 try {
                     console.log('Submitting transaction:', this.form);

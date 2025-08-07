@@ -72,11 +72,7 @@
                             {{ transaction.payee || 'No Payee' }}
                         </td>
                         <td class="p-4 text-gray-300">
-                            {{
-                                transaction.category_id
-                                    ? 'Category ' + transaction.category_id
-                                    : 'Uncategorized'
-                            }}
+                            {{ getCategoryName(transaction.category_id) }}
                         </td>
                         <td
                             class="p-4 text-gray-50"
@@ -142,6 +138,7 @@
                     updated_at: new Date(),
                 },
                 transactions: [],
+                categories: [],
             };
         },
         computed: {
@@ -153,6 +150,7 @@
         },
         async mounted() {
             await this.loadAccount();
+            await this.loadCategories();
             await this.loadTransactions();
         },
         watch: {
@@ -223,6 +221,31 @@
             },
             formatDate(date) {
                 return new Date(date).toLocaleDateString();
+            },
+            async loadCategories() {
+                try {
+                    this.categories = await invoke('get_categories');
+                    console.log('Loaded categories for AccountDetail:', this.categories);
+                } catch (error) {
+                    console.error('Failed to load categories:', error);
+                    this.categories = [];
+                }
+            },
+            getCategoryName(categoryId) {
+                if (!categoryId) return 'Uncategorized';
+                
+                const category = this.categories.find(cat => cat.id === categoryId);
+                if (!category) return `Category ${categoryId}`;
+                
+                // If category has a parent, show it as "Parent > Child"
+                if (category.parent_category_id) {
+                    const parent = this.categories.find(cat => cat.id === category.parent_category_id);
+                    if (parent) {
+                        return `${parent.name} > ${category.name}`;
+                    }
+                }
+                
+                return category.name;
             },
         },
     };
