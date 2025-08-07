@@ -27,28 +27,19 @@
         </div>
 
         <!-- Transaction Table -->
-        <div class="bg-gray-800 rounded-lg overflow-hidden">
-            <table class="w-full">
+        <div class="bg-gray-800 rounded-lg overflow-hidden overflow-x-auto">
+            <table class="w-full min-w-max text-sm">
                 <thead class="bg-gray-700">
                     <tr>
-                        <th class="text-left p-4 text-gray-300 font-medium">
-                            Date
-                        </th>
-                        <th class="text-left p-4 text-gray-300 font-medium">
-                            Description
-                        </th>
-                        <th class="text-left p-4 text-gray-300 font-medium">
-                            Category
-                        </th>
-                        <th class="text-left p-4 text-gray-300 font-medium">
-                            Amount
-                        </th>
-                        <th class="text-left p-4 text-gray-300 font-medium">
-                            Balance
-                        </th>
-                        <th class="text-left p-4 text-gray-300 font-medium">
-                            Status
-                        </th>
+                        <th class="text-left px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide w-24">Date</th>
+                        <th class="text-left px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide min-w-32">Description</th>
+                        <th class="text-left px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide min-w-28">Payee</th>
+                        <th class="text-left px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide min-w-32">Category</th>
+                        <th class="text-right px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide w-24">Amount</th>
+                        <th class="text-left px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide min-w-24">Memo</th>
+                        <th class="text-center px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide w-16">Pend</th>
+                        <th class="text-center px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide w-16">Clear</th>
+                        <th class="text-center px-2 py-2 text-gray-300 font-medium text-xs uppercase tracking-wide w-20">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -56,7 +47,7 @@
                         v-if="transactions.length === 0"
                         class="border-t border-gray-600"
                     >
-                        <td class="p-4 text-gray-400" colspan="6">
+                        <td class="px-2 py-3 text-gray-400 text-center" colspan="9">
                             No transactions yet
                         </td>
                     </tr>
@@ -64,38 +55,180 @@
                         v-for="transaction in transactions"
                         :key="transaction.id"
                         class="border-t border-gray-600 hover:bg-gray-750"
+                        :class="{ 'bg-gray-750': editingTransactionId === transaction.id }"
                     >
-                        <td class="p-4 text-gray-50">
-                            {{ formatDate(transaction.date) }}
+                        <!-- Date -->
+                        <td class="px-2 py-2 text-gray-50">
+                            <input
+                                v-if="editingTransactionId === transaction.id"
+                                type="date"
+                                v-model="editingTransaction.date"
+                                @keyup.enter="saveTransaction"
+                                @keyup.escape="cancelEdit"
+                                class="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-gray-50 focus:outline-none focus:border-indigo-500"
+                            />
+                            <span v-else class="text-sm">{{ formatDate(transaction.date) }}</span>
                         </td>
-                        <td class="p-4 text-gray-50">
-                            {{ transaction.payee || 'No Payee' }}
+
+                        <!-- Description -->
+                        <td class="px-2 py-2 text-gray-50">
+                            <input
+                                v-if="editingTransactionId === transaction.id"
+                                type="text"
+                                v-model="editingTransaction.description"
+                                placeholder="Description"
+                                @keyup.enter="saveTransaction"
+                                @keyup.escape="cancelEdit"
+                                class="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-gray-50 focus:outline-none focus:border-indigo-500"
+                            />
+                            <span v-else class="text-sm">{{ transaction.description || '-' }}</span>
                         </td>
-                        <td class="p-4 text-gray-300">
-                            {{ getCategoryName(transaction.category_id) }}
+
+                        <!-- Payee -->
+                        <td class="px-2 py-2 text-gray-50">
+                            <input
+                                v-if="editingTransactionId === transaction.id"
+                                type="text"
+                                v-model="editingTransaction.payee"
+                                placeholder="Payee"
+                                @keyup.enter="saveTransaction"
+                                @keyup.escape="cancelEdit"
+                                class="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-gray-50 focus:outline-none focus:border-indigo-500"
+                            />
+                            <span v-else class="text-sm">{{ transaction.payee || '-' }}</span>
                         </td>
-                        <td
-                            class="p-4 text-gray-50"
-                            :class="
-                                transaction.amount >= 0
-                                    ? 'text-emerald-500'
-                                    : 'text-red-500'
-                            "
-                        >
-                            {{ formatBalance(transaction.amount) }}
-                        </td>
-                        <td class="p-4 text-gray-300">-</td>
-                        <td class="p-4 text-gray-300">
-                            <span
-                                v-if="transaction.pending"
-                                class="text-yellow-400"
-                                >Pending</span
+
+                        <!-- Category -->
+                        <td class="px-2 py-2 text-gray-300">
+                            <select
+                                v-if="editingTransactionId === transaction.id"
+                                v-model="editingTransaction.category_id"
+                                class="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-gray-50 focus:outline-none focus:border-indigo-500"
                             >
-                            <span
-                                v-if="transaction.reconciled"
-                                class="text-green-400"
-                                >Reconciled</span
+                                <option :value="null">Uncategorized</option>
+                                <option 
+                                    v-for="category in nonSystemCategories" 
+                                    :key="category.id" 
+                                    :value="category.id"
+                                >
+                                    {{ formatCategoryName(category) }}
+                                </option>
+                            </select>
+                            <span v-else class="text-sm">{{ getCategoryName(transaction.category_id) }}</span>
+                        </td>
+
+                        <!-- Amount -->
+                        <td class="px-2 py-2 text-right">
+                            <input
+                                v-if="editingTransactionId === transaction.id"
+                                type="number"
+                                step="0.01"
+                                v-model.number="editingTransaction.amount"
+                                @keyup.enter="saveTransaction"
+                                @keyup.escape="cancelEdit"
+                                class="w-full px-2 py-1 text-sm text-right bg-gray-700 border border-gray-600 rounded text-gray-50 focus:outline-none focus:border-indigo-500"
+                            />
+                            <span 
+                                v-else
+                                class="text-sm font-medium"
+                                :class="
+                                    transaction.amount >= 0
+                                        ? 'text-emerald-500'
+                                        : 'text-red-500'
+                                "
                             >
+                                {{ formatBalance(transaction.amount) }}
+                            </span>
+                        </td>
+
+                        <!-- Memo -->
+                        <td class="px-2 py-2 text-gray-300">
+                            <input
+                                v-if="editingTransactionId === transaction.id"
+                                type="text"
+                                v-model="editingTransaction.memo"
+                                placeholder="Memo"
+                                @keyup.enter="saveTransaction"
+                                @keyup.escape="cancelEdit"
+                                class="w-full px-2 py-1 text-xs bg-gray-700 border border-gray-600 rounded text-gray-50 focus:outline-none focus:border-indigo-500"
+                            />
+                            <span v-else class="text-xs text-gray-400">{{ transaction.memo || '-' }}</span>
+                        </td>
+
+                        <!-- Pending -->
+                        <td class="px-2 py-2 text-center">
+                            <input
+                                v-if="editingTransactionId === transaction.id"
+                                type="checkbox"
+                                v-model="editingTransaction.pending"
+                                class="w-3 h-3 accent-indigo-500"
+                            />
+                            <span 
+                                v-else-if="transaction.pending" 
+                                class="text-yellow-400 text-xs"
+                                title="Pending"
+                            >
+                                ●
+                            </span>
+                            <span v-else class="text-gray-600 text-xs">○</span>
+                        </td>
+
+                        <!-- Cleared -->
+                        <td class="px-2 py-2 text-center">
+                            <input
+                                v-if="editingTransactionId === transaction.id"
+                                type="checkbox"
+                                v-model="editingTransaction.cleared"
+                                class="w-3 h-3 accent-indigo-500"
+                            />
+                            <span 
+                                v-else-if="transaction.cleared" 
+                                class="text-green-400 text-xs"
+                                title="Cleared"
+                            >
+                                ●
+                            </span>
+                            <span v-else class="text-gray-600 text-xs">○</span>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-1 py-2 text-center">
+                            <div v-if="editingTransactionId === transaction.id" class="flex justify-center gap-1">
+                                <!-- Save -->
+                                <button
+                                    @click="saveTransaction"
+                                    class="text-green-400 hover:text-green-300 px-1 py-0.5 text-sm"
+                                    title="Save changes"
+                                >
+                                    ✓
+                                </button>
+                                <!-- Cancel -->
+                                <button
+                                    @click="cancelEdit"
+                                    class="text-gray-400 hover:text-gray-300 px-1 py-0.5 text-sm"
+                                    title="Cancel editing"
+                                >
+                                    ✗
+                                </button>
+                            </div>
+                            <div v-else class="flex justify-center gap-1">
+                                <!-- Edit -->
+                                <button
+                                    @click="startEdit(transaction)"
+                                    class="text-blue-400 hover:text-blue-300 px-1 py-0.5 text-xs"
+                                    title="Edit transaction"
+                                >
+                                    ✏️
+                                </button>
+                                <!-- Delete -->
+                                <button
+                                    @click="deleteTransaction(transaction.id)"
+                                    class="text-red-400 hover:text-red-300 px-1 py-0.5 text-xs"
+                                    title="Delete transaction"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
@@ -110,6 +243,7 @@
             <TransactionForm
                 :accountId="account.id"
                 @cancel="showTransactionModal = false"
+                @success="handleTransactionAdded"
             />
         </Modal>
     </div>
@@ -139,6 +273,8 @@
                 },
                 transactions: [],
                 categories: [],
+                editingTransactionId: null,
+                editingTransaction: {},
             };
         },
         computed: {
@@ -146,6 +282,9 @@
                 return this.account.current_balance >= 0
                     ? 'text-emerald-500'
                     : 'text-red-500';
+            },
+            nonSystemCategories() {
+                return this.categories.filter(category => !category.is_system_category);
             },
         },
         async mounted() {
@@ -246,6 +385,90 @@
                 }
                 
                 return category.name;
+            },
+            formatCategoryName(category) {
+                // If category has a parent, show it as "Parent > Child"
+                if (category.parent_category_id) {
+                    const parent = this.categories.find(cat => cat.id === category.parent_category_id);
+                    if (parent) {
+                        return `${parent.name} > ${category.name}`;
+                    }
+                }
+                return category.name;
+            },
+            startEdit(transaction) {
+                this.editingTransactionId = transaction.id;
+                // Create a copy of the transaction for editing
+                this.editingTransaction = {
+                    date: transaction.date,
+                    amount: transaction.amount,
+                    description: transaction.description || '',
+                    payee: transaction.payee || '',
+                    memo: transaction.memo || '',
+                    category_id: transaction.category_id,
+                    pending: transaction.pending,
+                    cleared: transaction.cleared,
+                };
+            },
+            async saveTransaction() {
+                try {
+                    const request = {
+                        date: this.editingTransaction.date,
+                        amount: this.editingTransaction.amount,
+                        description: this.editingTransaction.description || null,
+                        payee: this.editingTransaction.payee || null,
+                        memo: this.editingTransaction.memo || null,
+                        category_id: this.editingTransaction.category_id || null,
+                        pending: this.editingTransaction.pending,
+                        cleared: this.editingTransaction.cleared,
+                    };
+
+                    await invoke('update_transaction', {
+                        transactionId: this.editingTransactionId,
+                        request: request,
+                    });
+
+                    // Refresh transactions to show updated data
+                    await this.loadTransactions();
+                    
+                    // Exit edit mode
+                    this.editingTransactionId = null;
+                    this.editingTransaction = {};
+                    
+                    console.log('Transaction updated successfully');
+                } catch (error) {
+                    console.error('Failed to update transaction:', error);
+                    alert('Failed to update transaction. Please try again.');
+                }
+            },
+            cancelEdit() {
+                this.editingTransactionId = null;
+                this.editingTransaction = {};
+            },
+            async deleteTransaction(transactionId) {
+                if (!confirm('Are you sure you want to delete this transaction?')) {
+                    return;
+                }
+
+                try {
+                    await invoke('delete_transaction', {
+                        transactionId: transactionId,
+                    });
+
+                    // Refresh transactions to remove deleted transaction
+                    await this.loadTransactions();
+                    
+                    console.log('Transaction deleted successfully');
+                } catch (error) {
+                    console.error('Failed to delete transaction:', error);
+                    alert('Failed to delete transaction. Please try again.');
+                }
+            },
+            async handleTransactionAdded() {
+                // Close modal and refresh transactions list
+                this.showTransactionModal = false;
+                await this.loadTransactions();
+                console.log('New transaction added, refreshing list');
             },
         },
     };
