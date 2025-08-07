@@ -7,18 +7,18 @@ mod database;
 mod tests;
 
 /// Entry point for the Tally personal finance application.
-/// 
+///
 /// Initializes the SQLite database connection, creates required tables,
 /// and starts the Tauri desktop application with registered command handlers.
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns `Ok(())` on successful application startup, or an error if:
 /// - Database initialization fails
 /// - Tauri application fails to start
-/// 
+///
 /// # Errors
-/// 
+///
 /// This function will return an error if:
 /// - SQLite database cannot be created or connected to
 /// - Required database tables cannot be created
@@ -42,33 +42,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             update_category,
             archive_category,
             add_transaction,
+            get_transaction,
+            update_transaction,
+            delete_transaction,
             get_transactions
         ])
         .run(tauri::generate_context!())?;
-        
+
     Ok(())
 }
 
 /// Initializes the SQLite database connection and creates all required tables.
-/// 
+///
 /// Creates a connection pool to the SQLite database file (`tally.db`) and ensures
 /// all necessary tables exist for the application to function properly.
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(SqlitePool)` - A connection pool ready for database operations
 /// - `Err(sqlx::Error)` - Database connection or table creation error
-/// 
+///
 /// # Errors
-/// 
+///
 /// This function will return an error if:
 /// - Database file cannot be created or accessed
 /// - SQLite connection cannot be established
 /// - Any required table creation fails (accounts, transactions, categories, transfers)
-/// 
+///
 /// # Tables Created
-/// 
+///
 /// - `accounts` - User financial accounts
 /// - `transactions` - Financial transactions
 /// - `categories` - Transaction categories
@@ -79,8 +82,9 @@ async fn initialize_database() -> Result<sqlx::SqlitePool, sqlx::Error> {
     database::create_accounts_table(&pool).await?;
     database::create_transactions_table(&pool).await?;
     database::create_categories_table(&pool).await?;
-    database::create_transfers_table(&pool).await?;
-    
+    database::
+    create_transfers_table(&pool).await?;
+
     // Seed default system categories
     database::seed_default_categories(&pool).await?;
 
@@ -88,28 +92,28 @@ async fn initialize_database() -> Result<sqlx::SqlitePool, sqlx::Error> {
 }
 
 /// Retrieves all non-archived accounts from the database.
-/// 
+///
 /// This Tauri command fetches all active financial accounts, including their
 /// complete metadata such as balances, institution information, and display settings.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `pool` - Tauri-managed SQLite connection pool state
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(Vec<Account>)` - Vector of Account structs with all fields populated
 /// - `Err(String)` - Formatted error message if database operation fails
-/// 
+///
 /// # Database Behavior
-/// 
+///
 /// - Only returns accounts where `archived = FALSE`
 /// - Results are ordered by `display_order` first, then alphabetically by `name`
 /// - Currency amounts are automatically converted from database cents to dollars
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// const accounts = await invoke('get_accounts');
 /// ```
@@ -119,28 +123,28 @@ async fn get_accounts(
 ) -> Result<Vec<database::Account>, String> {
     database::get_accounts(&pool)
         .await
-        .map_err(|e| format!("Failed to get accounts: {}", e))
+        .map_err(|e| format!("Failed to get accounts: {e}"))
 }
 
 /// Creates a new financial account in the database.
-/// 
+///
 /// This Tauri command accepts a complete account creation request with all user-settable
 /// fields and inserts it into the accounts table. Database-managed fields like timestamps
 /// and ID are handled automatically.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `pool` - Tauri-managed SQLite connection pool state
 /// * `request` - Account creation data including name, type, and optional fields
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(i64)` - The ID of the newly created account
 /// - `Err(String)` - Formatted error message if database operation fails
-/// 
+///
 /// # Request Fields
-/// 
+///
 /// - `name` - Account display name (required)
 /// - `account_type` - Account type like "checking", "savings" (required)
 /// - `institution` - Bank or financial institution name (optional)
@@ -148,9 +152,9 @@ async fn get_accounts(
 /// - `display_order` - Sort order for account listing (optional)
 /// - `include_in_net_worth` - Whether to include in net worth calculations (optional, defaults to true)
 /// - `account_number_last4` - Last 4 digits of account number (optional)
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// const request = {
 ///   name: "My Checking",
@@ -170,30 +174,30 @@ async fn add_account(
 ) -> Result<i64, String> {
     match database::insert_account(&pool, &request).await {
         Ok(id) => Ok(id),
-        Err(e) => Err(format!("Failed to add account: {}", e)),
+        Err(e) => Err(format!("Failed to add account: {e}")),
     }
 }
 
 /// Retrieves a specific account by its unique ID.
-/// 
+///
 /// This Tauri command fetches complete account information for a single account,
 /// returning the same full Account struct as get_accounts() for consistency.
 /// Only returns data for non-archived accounts.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `id` - The unique ID of the account to retrieve
 /// * `state` - Tauri-managed SQLite connection pool state
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(Some(Account))` - Complete account information including all fields
 /// - `Ok(None)` - No account found with the given ID (or account is archived)
 /// - `Err(String)` - Formatted error message if database operation fails
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// const account = await invoke('get_account', { id: 123 });
 /// if (account) {
@@ -213,29 +217,29 @@ async fn get_account(
 }
 
 /// Updates an existing account with new information.
-/// 
+///
 /// This Tauri command modifies an existing account record with the provided data
 /// while preserving system-managed fields. Only non-archived accounts can be updated.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `pool` - Tauri-managed SQLite connection pool state
 /// * `account_id` - The ID of the account to update
 /// * `request` - Account update data including name, type, and optional fields
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(())` - Account successfully updated
 /// - `Err(String)` - Formatted error message if database operation fails
-/// 
+///
 /// # Request Fields
-/// 
+///
 /// Same as account creation: name, account_type, institution, current_balance,
 /// display_order, include_in_net_worth, account_number_last4
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// const request = {
 ///   name: "Updated Account Name",
@@ -256,27 +260,27 @@ async fn update_account(
 ) -> Result<(), String> {
     database::update_account(&pool, account_id, &request)
         .await
-        .map_err(|e| format!("Failed to update account: {}", e))
+        .map_err(|e| format!("Failed to update account: {e}"))
 }
 
 /// Archives (soft deletes) an account by marking it as archived.
-/// 
+///
 /// This Tauri command safely removes an account from active use by setting
 /// the archived flag to true, while preserving all data and transaction history.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `pool` - Tauri-managed SQLite connection pool state
 /// * `account_id` - The ID of the account to archive
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(())` - Account successfully archived
 /// - `Err(String)` - Formatted error message if operation fails
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// await invoke('archive_account', { accountId: 123 });
 /// ```
@@ -287,36 +291,36 @@ async fn archive_account(
 ) -> Result<(), String> {
     database::archive_account(&pool, account_id)
         .await
-        .map_err(|e| format!("Failed to archive account: {}", e))
+        .map_err(|e| format!("Failed to archive account: {e}"))
 }
 
 /// Creates a new category in the database.
-/// 
+///
 /// This Tauri command accepts a category creation request with all user-settable
 /// fields and inserts it into the categories table. Database-managed fields like timestamps
 /// and ID are handled automatically.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `pool` - Tauri-managed SQLite connection pool state
 /// * `request` - Category creation data including name and optional fields
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(i64)` - The ID of the newly created category
 /// - `Err(String)` - Formatted error message if database operation fails
-/// 
+///
 /// # Request Fields
-/// 
+///
 /// - `name` - Category display name (required)
 /// - `display_order` - Sort order for category listing (optional)
 /// - `parent_category_id` - Parent category for hierarchical structure (optional)
 /// - `default_discretionary` - Default discretionary spending flag (optional)
 /// - `default_fixed` - Default fixed expense flag (optional)
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// const request = {
 ///   name: "Groceries",
@@ -334,33 +338,33 @@ async fn add_category(
 ) -> Result<i64, String> {
     match database::insert_category(&pool, &request).await {
         Ok(id) => Ok(id),
-        Err(e) => Err(format!("Failed to add category: {}", e)),
+        Err(e) => Err(format!("Failed to add category: {e}")),
     }
 }
 
 /// Retrieves all non-archived categories from the database.
-/// 
+///
 /// This Tauri command fetches all active categories, including their
 /// complete metadata such as hierarchy information, display order, and system flags.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `pool` - Tauri-managed SQLite connection pool state
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(Vec<Category>)` - Vector of Category structs with all fields populated
 /// - `Err(String)` - Formatted error message if database operation fails
-/// 
+///
 /// # Database Behavior
-/// 
+///
 /// - Only returns categories where `archived = FALSE`
 /// - Results are ordered by `display_order` first, then alphabetically by `name`
 /// - Includes both system and user-created categories
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// const categories = await invoke('get_categories');
 /// ```
@@ -370,29 +374,29 @@ async fn get_categories(
 ) -> Result<Vec<database::Category>, String> {
     database::get_categories(&pool)
         .await
-        .map_err(|e| format!("Failed to get categories: {}", e))
+        .map_err(|e| format!("Failed to get categories: {e}"))
 }
 
 /// Retrieves a specific category by its unique ID.
-/// 
+///
 /// This Tauri command fetches complete category information for a single category,
 /// returning the same full Category struct as get_categories() for consistency.
 /// Only returns data for non-archived categories.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `id` - The unique ID of the category to retrieve
 /// * `pool` - Tauri-managed SQLite connection pool state
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(Some(Category))` - Complete category information including all fields
 /// - `Ok(None)` - No category found with the given ID (or category is archived)
 /// - `Err(String)` - Formatted error message if database operation fails
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// const category = await invoke('get_category', { id: 123 });
 /// if (category) {
@@ -411,29 +415,29 @@ async fn get_category(
 }
 
 /// Updates an existing category with new information.
-/// 
+///
 /// This Tauri command modifies an existing category record with the provided data
 /// while preserving system-managed fields. Only non-system categories can be updated.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `pool` - Tauri-managed SQLite connection pool state
 /// * `category_id` - The ID of the category to update
 /// * `request` - Category update data including name and optional fields
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(())` - Category successfully updated
 /// - `Err(String)` - Formatted error message if database operation fails
-/// 
+///
 /// # Request Fields
-/// 
+///
 /// Same as category creation: name, display_order, parent_category_id,
 /// default_discretionary, default_fixed
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// const request = {
 ///   name: "Updated Category Name",
@@ -452,28 +456,28 @@ async fn update_category(
 ) -> Result<(), String> {
     database::update_category(&pool, category_id, &request)
         .await
-        .map_err(|e| format!("Failed to update category: {}", e))
+        .map_err(|e| format!("Failed to update category: {e}"))
 }
 
 /// Archives (soft deletes) a category by marking it as archived.
-/// 
+///
 /// This Tauri command safely removes a category from active use by setting
 /// the archived flag to true, while preserving all data and transaction history.
 /// System categories cannot be archived.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `pool` - Tauri-managed SQLite connection pool state
 /// * `category_id` - The ID of the category to archive
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a `Result` containing:
 /// - `Ok(())` - Category successfully archived
 /// - `Err(String)` - Formatted error message if operation fails
-/// 
+///
 /// # Frontend Usage
-/// 
+///
 /// ```javascript
 /// await invoke('archive_category', { categoryId: 123 });
 /// ```
@@ -484,39 +488,188 @@ async fn archive_category(
 ) -> Result<(), String> {
     database::archive_category(&pool, category_id)
         .await
-        .map_err(|e| format!("Failed to archive category: {}", e))
+        .map_err(|e| format!("Failed to archive category: {e}"))
 }
 
+/// Creates a new transaction in the database.
+///
+/// This Tauri command accepts a transaction creation request with all user-settable
+/// fields and inserts it into the transactions table. Database-managed fields like timestamps
+/// and ID are handled automatically.
+///
+/// # Arguments
+///
+/// * `pool` - Tauri-managed SQLite connection pool state
+/// * `request` - Transaction creation data including amount, date, and optional fields
+///
+/// # Returns
+///
+/// Returns a `Result` containing:
+/// - `Ok(i64)` - The ID of the newly created transaction
+/// - `Err(String)` - Formatted error message if database operation fails
+///
+/// # Request Fields
+///
+/// - `account_id` - Account to add transaction to (required)
+/// - `date` - Transaction date in YYYY-MM-DD format (required)
+/// - `amount` - Transaction amount in dollars (required)
+/// - `description` - Transaction description (optional)
+/// - `payee` - Transaction payee/merchant (optional)
+/// - `memo` - Additional notes (optional)
+/// - `category_id` - Category ID for categorization (optional)
+/// - `pending` - Whether transaction is pending (required)
+/// - `cleared` - Whether transaction has cleared (required)
+///
+/// # Frontend Usage
+///
+/// ```javascript
+/// const request = {
+///   account_id: 1,
+///   date: "2024-01-15",
+///   amount: 25.50,
+///   description: "Grocery shopping",
+///   payee: "Safeway",
+///   memo: "Weekly groceries",
+///   category_id: 5,
+///   pending: false,
+///   cleared: true
+/// };
+/// const transactionId = await invoke('add_transaction', { request });
+/// ```
 #[tauri::command]
 async fn add_transaction(
     pool: tauri::State<'_, sqlx::SqlitePool>,
-    account_id: i64,
-    date: String,
-    amount: f64,
-    description: Option<String>,
-    payee: Option<String>,
-    memo: Option<String>,
-    category_id: Option<i64>,
-    pending: bool,
-    cleared: bool,
+    request: database::CreateTransactionRequest,
 ) -> Result<i64, String> {
-    match database::insert_transaction(
-        &pool,
-        account_id,
-        &date,
-        amount,
-        description.as_deref(),
-        payee.as_deref(),
-        memo.as_deref(),
-        category_id,
-        pending,
-        cleared,
-    )
-    .await
-    {
+    match database::insert_transaction(&pool, &request).await {
         Ok(id) => Ok(id),
-        Err(e) => Err(format!("Failed to add transaction: {}", e)),
+        Err(e) => Err(format!("Failed to add transaction: {e}")),
     }
+}
+
+/// Retrieves a specific transaction by its unique ID.
+///
+/// This Tauri command fetches complete transaction information for a single transaction,
+/// returning the same full Transaction struct as get_transactions() for consistency.
+/// Currency amounts are automatically converted from database cents to dollars.
+///
+/// # Arguments
+///
+/// * `id` - The unique ID of the transaction to retrieve
+/// * `pool` - Tauri-managed SQLite connection pool state
+///
+/// # Returns
+///
+/// Returns a `Result` containing:
+/// - `Ok(Some(Transaction))` - Complete transaction information including all fields
+/// - `Ok(None)` - No transaction found with the given ID
+/// - `Err(String)` - Formatted error message if database operation fails
+///
+/// # Frontend Usage
+///
+/// ```javascript
+/// const transaction = await invoke('get_transaction', { id: 123 });
+/// if (transaction) {
+///   console.log(`Found transaction: ${transaction.description} - $${transaction.amount}`);
+///   console.log(`Account ID: ${transaction.account_id}`);
+///   console.log(`Date: ${transaction.date}`);
+/// }
+/// ```
+#[tauri::command]
+async fn get_transaction(
+    id: i64,
+    pool: tauri::State<'_, sqlx::SqlitePool>,
+) -> Result<Option<database::Transaction>, String> {
+    database::get_transaction(&pool, id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Updates an existing transaction with new information.
+///
+/// This Tauri command modifies an existing transaction record with the provided data
+/// while preserving system-managed fields. Currency amounts are automatically
+/// converted from dollars to integer cents for precise storage.
+///
+/// # Arguments
+///
+/// * `pool` - Tauri-managed SQLite connection pool state
+/// * `transaction_id` - The ID of the transaction to update
+/// * `request` - Transaction update data including amount, date, and optional fields
+///
+/// # Returns
+///
+/// Returns a `Result` containing:
+/// - `Ok(())` - Transaction successfully updated
+/// - `Err(String)` - Formatted error message if database operation fails
+///
+/// # Request Fields
+///
+/// Same as CreateTransactionRequest except without account_id (cannot be changed):
+/// - `date` - Transaction date in YYYY-MM-DD format (required)
+/// - `amount` - Transaction amount in dollars (required)
+/// - `description` - Transaction description (optional)
+/// - `payee` - Transaction payee/merchant (optional)
+/// - `memo` - Additional notes (optional)
+/// - `category_id` - Category ID for categorization (optional)
+/// - `pending` - Whether transaction is pending (required)
+/// - `cleared` - Whether transaction has cleared (required)
+///
+/// # Frontend Usage
+///
+/// ```javascript
+/// const request = {
+///   date: "2024-01-16",
+///   amount: 30.00,
+///   description: "Updated grocery shopping",
+///   payee: "Whole Foods",
+///   memo: "Organic groceries",
+///   category_id: 5,
+///   pending: false,
+///   cleared: true
+/// };
+/// await invoke('update_transaction', { transactionId: 123, request });
+/// ```
+#[tauri::command]
+async fn update_transaction(
+    pool: tauri::State<'_, sqlx::SqlitePool>,
+    transaction_id: i64,
+    request: database::UpdateTransactionRequest,
+) -> Result<(), String> {
+    database::update_transaction(&pool, transaction_id, &request)
+        .await
+        .map_err(|e| format!("Failed to update transaction: {e}"))
+}
+
+/// Deletes a transaction from the database.
+///
+/// This Tauri command permanently removes a transaction record from the database.
+/// This operation cannot be undone, so use with caution.
+///
+/// # Arguments
+///
+/// * `pool` - Tauri-managed SQLite connection pool state
+/// * `transaction_id` - The ID of the transaction to delete
+///
+/// # Returns
+///
+/// Returns a `Result` containing:
+/// - `Ok(())` - Transaction successfully deleted
+/// - `Err(String)` - Formatted error message if operation fails
+///
+/// # Frontend Usage
+///
+/// ```javascript
+/// await invoke('delete_transaction', { transactionId: 123 });
+/// ```
+#[tauri::command]
+async fn delete_transaction(
+    pool: tauri::State<'_, sqlx::SqlitePool>,
+    transaction_id: i64,
+) -> Result<(), String> {
+    database::delete_transaction(&pool, transaction_id)
+        .await
+        .map_err(|e| format!("Failed to delete transaction: {e}"))
 }
 
 #[tauri::command]
@@ -526,8 +679,8 @@ async fn get_transactions(
     limit: i32,
     offset: i32,
 ) -> Result<Vec<database::Transaction>, String> {
-    match database::get_account_transactions(&pool, account_id, limit, offset).await {
+    match database::get_transactions(&pool, account_id, limit, offset).await {
         Ok(transactions) => Ok(transactions),
-        Err(e) => Err(format!("Failed to get transactions: {}", e)),
+        Err(e) => Err(format!("Failed to get transactions: {e}")),
     }
 }

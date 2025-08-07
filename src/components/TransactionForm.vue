@@ -189,17 +189,19 @@
                 try {
                     console.log('Submitting transaction:', this.form);
 
-                    const result = await invoke('add_transaction', {
-                        accountId: this.accountId,
+                    const request = {
+                        account_id: this.accountId,
                         date: this.form.date,
                         amount: this.form.amount,
                         description: this.form.description || null,
                         payee: this.form.payee || null,
                         memo: this.form.memo || null,
-                        categoryId: this.form.categoryId || null,
+                        category_id: this.form.categoryId || null,
                         pending: this.form.pending,
                         cleared: this.form.cleared,
-                    });
+                    };
+
+                    const result = await invoke('add_transaction', { request });
 
                     console.log('Transaction added with ID:', result);
                     this.$emit('success');
